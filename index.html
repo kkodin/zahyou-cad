@@ -57,6 +57,13 @@ button:hover{filter:brightness(1.08)}
 #layTbl tr.cur td{background:#33425a}
 #layTbl select{background:#1d232c;border:1px solid #4a5466;padding:0 2px;font-size:11px;width:auto}
 #props{padding:6px 8px;line-height:1.5}
+/* プロパティの小窓（AutoCAD の Ctrl+1 のように図面の上に浮かぶ・つかんで動かす・右下で大きさを変える） */
+#propWin{position:absolute;right:12px;top:12px;width:270px;max-height:calc(100% - 24px);display:flex;flex-direction:column;background:#262d37;border:1px solid #4a5466;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.55);z-index:5;resize:both;overflow:hidden;min-width:210px;min-height:120px;cursor:default}
+#propWin[hidden],.side h3[hidden]{display:none}
+.pwh{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:#2f3743;border-bottom:1px solid #11161c;cursor:move;user-select:none;font-weight:bold;touch-action:none}
+.pwh button{background:transparent;color:#cfd6e2;padding:0 6px;font-size:14px}
+.pwb{overflow:auto;flex:1}
+#props .sec{color:#8b96a8;font-size:11px;border-bottom:1px solid #3a4352;margin:6px 0 2px}
 #props .pk{font-weight:bold;color:#fff;margin-bottom:4px}
 #props table{width:100%;border-collapse:collapse}
 #props td{padding:2px 0;vertical-align:top}
@@ -154,15 +161,17 @@ table.list td:nth-child(2){text-align:left}
         <span class="sep"></span>
         <button data-cmd="DIST" title="DIST（DI）">距離</button><button data-cmd="ID" title="ID：座標を調べる">座標</button><button data-cmd="LIST" title="LIST（LI）">一覧</button>
         <span class="sep"></span>
-        <button data-cmd="UNDO" title="Ctrl+Z">元に戻す</button><button data-cmd="REDO" title="Ctrl+Y">やり直し</button><button data-cmd="ZOOMEXT" title="ZOOM E・ダブルクリック">全体</button><button id="btnFull" title="作図画面を大きくする">大きく</button>
+        <button data-cmd="UNDO" title="Ctrl+Z">元に戻す</button><button data-cmd="REDO" title="Ctrl+Y">やり直し</button><button data-cmd="ZOOMEXT" title="ZOOM E・ダブルクリック">全体</button><button id="btnFull" title="作図画面を大きくする">大きく</button><button id="btnWin" title="図面を新しいウィンドウに出す（2画面目にも置ける）">別窓</button><button id="btnProp" title="プロパティを動かせる小窓で出す（Ctrl+1）">プロパティ</button>
         <span id="editBar">手で直した図です（①②を変えても図は変わりません）<button data-cmd="REBUILD">作り直す</button></span>
       </div>
       <div class="cadmain">
-        <div class="cvwrap"><canvas id="cv"></canvas><div id="dyn"></div></div>
+        <div class="cvwrap"><canvas id="cv"></canvas><div id="dyn"></div>
+          <div id="propWin" hidden><div class="pwh" title="ここをつかんで動かす"><span>プロパティ</span><button type="button" id="pwClose" title="閉じる（右の欄に戻す）">×</button></div><div class="pwb"></div></div>
+        </div>
         <div class="side">
           <h3>画層<button id="btnNewLy" title="新しい画層を作る">＋</button></h3>
           <table id="layTbl"></table>
-          <h3>プロパティ</h3>
+          <h3 id="sideProp">プロパティ</h3>
           <div id="props"></div>
         </div>
       </div>
@@ -196,7 +205,9 @@ table.list td:nth-child(2){text-align:left}
 
 <script>
 const SCALES=[50,100,200,250,300,500,600,1000,1200,2000,2500,5000,10000];
-const $=id=>document.getElementById(id);
+// 図面を別窓に出しているときは、その窓の中も探す
+let popup=null;
+const $=id=>document.getElementById(id)||(popup&&!popup.closed?popup.document.getElementById(id):null);
 const sel=$('scale');
 SCALES.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o)});
 sel.value=500;
@@ -507,10 +518,11 @@ function extents(){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
 function zoomTo(b){if(!b||!CW)return;const span=Math.max(b.x1-b.x0,b.y1-b.y0)||1000;
   V.cx=(b.x0+b.x1)/2;V.cy=(b.y0+b.y1)/2;V.s=Math.min(CW/Math.max(b.x1-b.x0,span*0.01),CH/Math.max(b.y1-b.y0,span*0.01))*0.92;render()}
 function fit(){zoomTo(extents())}
-function sizeCanvas(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;if(!r.width)return;
+const W=()=>cv.ownerDocument.defaultView||window; // 図面が今いる窓
+function sizeCanvas(){const r=cv.getBoundingClientRect(),dpr=W().devicePixelRatio||1;if(!r.width)return;
   const cx=V.cx,cy=V.cy;CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);V.cx=cx;V.cy=cy;paint()}
 new ResizeObserver(sizeCanvas).observe(cv);
-function render(){if(!rq)rq=requestAnimationFrame(()=>{rq=0;paint()})}
+function render(){if(!rq)rq=W().requestAnimationFrame(()=>{rq=0;paint()})}
 
 function paint(){
   if(!CW)return;
@@ -735,12 +747,13 @@ CMDS.ZOOMEXT=async()=>fit();
 CMDS.UNDO=async()=>{if(!undoS.length)return log('  これ以上戻せません');redoS.push(snapDoc());loadDoc(undoS.pop())};
 CMDS.REDO=async()=>{if(!redoS.length)return log('  やり直すものがありません');undoS.push(snapDoc());loadDoc(redoS.pop())};
 CMDS.LAYER=async a=>{const n=a.join(' ');if(n)newLayer(n);else log('  右の「画層」で 表示・ロック・色・現在の画層（○）を変えます')};
-CMDS.REBUILD=async()=>{if(edited&&!confirm('手で直した分を捨てて、①②から図を作り直しますか？'))return;undoS.push(snapDoc());edited=false;showEdited();refresh(true)};
+CMDS.REBUILD=async()=>{if(edited&&!W().confirm('手で直した分を捨てて、①②から図を作り直しますか？'))return;undoS.push(snapDoc());edited=false;showEdited();refresh(true)};
 CMDS.DXF=async()=>$('btnDxf').click();
+CMDS.PROPERTIES=async()=>showPropWin(true);ALIAS.PR=ALIAS.PROPS=ALIAS.CH='PROPERTIES';
 CMDS.HELP=async()=>log(['  L 線　PL ポリライン　C 円　PO 点　T 文字　DAL 寸法',
   '  M 移動　CO 複写　RO 回転　O オフセット　E 削除（Delete）',
   '  DI 距離・方向角　ID 座標を調べる　LI 一覧　Z ズーム（Z E＝全体）',
-  '  U 元に戻す（Ctrl+Z）　REDO やり直し（Ctrl+Y）　LA 名前＝画層を作る　DXF 保存　REBUILD 作り直す',
+  '  U 元に戻す（Ctrl+Z）　REDO やり直し（Ctrl+Y）　LA 名前＝画層を作る　PR プロパティ（Ctrl+1）　DXF 保存　REBUILD 作り直す',
   '  F3 スナップ　F7 グリッド　F8 直交　Esc 中止　Enter・スペース・右クリック＝決定／前のコマンドをもう一度'].join('\n'));
 
 // ---- マウス・指 ----
@@ -751,7 +764,7 @@ cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(sp(e),e.deltaY<0?1.2:1
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const p=sp(e);
   if(e.pointerType==='touch'){touches.set(e.pointerId,p);if(touches.size===2){const[a,b]=[...touches.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),m:[(a[0]+b[0])/2,(a[1]+b[1])/2]};pd=null}else pd={p,touch:true,moved:false};return}
-  if(document.activeElement!==cmdEl&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#props')))cmdEl.focus({preventScroll:true});
+  const ae=cv.ownerDocument.activeElement;if(ae!==cmdEl&&!(ae&&ae.closest&&ae.closest('#props')))cmdEl.focus({preventScroll:true});
   if(e.button===1){e.preventDefault();if(Date.now()-lastMid<350){fit();lastMid=0;return}lastMid=Date.now();pan={p};return}
   if(e.button===2){pan={p,right:true,moved:false};return}
   if(e.button===0)pd={p,moved:false}});
@@ -776,7 +789,7 @@ cv.addEventListener('pointerup',e=>{const p=sp(e);
   if(!d.moved)click(p,e)});
 cv.addEventListener('pointerleave',()=>{mouse=null;snap=null;hover=null;render()});
 cv.addEventListener('dblclick',e=>{if(pending)return;const w=toW(...sp(e)),h=hitAt(w);
-  if(!h)return fit();chosen.clear();chosen.add(h.id);updProps();render();const t=$('props').querySelector('[data-k="s"]');if(t){t.focus();t.select()}});
+  if(!h)return fit();chosen.clear();chosen.add(h.id);showPropWin(true);updProps();render();const t=$('props').querySelector('[data-k="s"]');if(t){t.focus();t.select()}});
 function gripAt(p){if(pending||!chosen.size||chosen.size>200)return null;
   for(const e of doc.ents)if(chosen.has(e.id)&&usable(e))for(const g of gripsOf(e)){const q=toS(g.p);if(Math.hypot(q[0]-p[0],q[1]-p[1])<7)return{e,g}}return null}
 function click(p,ev){
@@ -792,25 +805,66 @@ function click(p,ev){
 function finishBox(p,ev){const b=box;box=null;const a=toW(b.x,b.y),c=toW(...p),r={x0:Math.min(a[0],c[0]),x1:Math.max(a[0],c[0]),y0:Math.min(a[1],c[1]),y1:Math.max(a[1],c[1])},cross=p[0]<b.x;
   doc.ents.forEach(e=>{if(usable(e)&&inBox(e,r,cross)){if(ev.shiftKey)chosen.delete(e.id);else chosen.add(e.id)}});updProps();render()}
 $('cad').addEventListener('pointerenter',()=>overCad=true);$('cad').addEventListener('pointerleave',()=>overCad=false);
-document.addEventListener('keydown',e=>{
+function onKey(e){
   const t=e.target,typing=(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')&&t!==cmdEl;
   if(!(overCad||t===cmdEl))return;
   if(e.key==='F3'||e.key==='F7'||e.key==='F8'){e.preventDefault();toggle({F3:'osnap',F7:'grid',F8:'ortho'}[e.key]);return}
   if(typing)return;
   if(e.key==='Escape'){e.preventDefault();cmdEl.value='';cancel();return}
-  if((e.ctrlKey||e.metaKey)&&!e.altKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();run('UNDO')}else if(k==='y'){e.preventDefault();run('REDO')}else if(k==='a'&&!pending&&t!==cmdEl){e.preventDefault();doc.ents.forEach(x=>usable(x)&&chosen.add(x.id));updProps();render()}return}
+  if((e.ctrlKey||e.metaKey)&&!e.altKey){const k=e.key.toLowerCase();if(k==='1'){e.preventDefault();showPropWin()}else if(k==='z'){e.preventDefault();run('UNDO')}else if(k==='y'){e.preventDefault();run('REDO')}else if(k==='a'&&!pending&&t!==cmdEl){e.preventDefault();doc.ents.forEach(x=>usable(x)&&chosen.add(x.id));updProps();render()}return}
   if(e.key==='Delete'&&!pending&&chosen.size&&!cmdEl.value){e.preventDefault();run('ERASE');return}
-  if(t!==cmdEl&&e.key.length===1&&!e.altKey)cmdEl.focus({preventScroll:true})});
-function toggle(k){tog[k]=!tog[k];document.querySelectorAll('.stat [data-t]').forEach(b=>b.classList.toggle('on',tog[b.dataset.t]));
+  if(t!==cmdEl&&e.key.length===1&&!e.altKey)cmdEl.focus({preventScroll:true})}
+document.addEventListener('keydown',onKey);
+function toggle(k){tog[k]=!tog[k];$('cad').querySelectorAll('.stat [data-t]').forEach(b=>b.classList.toggle('on',tog[b.dataset.t]));
   log(`  ${{osnap:'スナップ',ortho:'直交',grid:'グリッド'}[k]} ${tog[k]?'ON':'OFF'}`);render()}
 document.querySelectorAll('.stat [data-t]').forEach(b=>{b.classList.toggle('on',tog[b.dataset.t]);b.onclick=()=>toggle(b.dataset.t)});
 document.querySelectorAll('#tb [data-cmd]').forEach(b=>b.onclick=()=>{log('コマンド: '+b.dataset.cmd);run(b.dataset.cmd);cmdEl.focus({preventScroll:true})});
-$('btnFull').onclick=()=>{const c=$('cadCard'),f=c.classList.toggle('full');$('btnFull').textContent=f?'元の大きさ':'大きく';document.body.style.overflow=f?'hidden':''};
+$('btnFull').onclick=()=>{
+  if(popup&&!popup.closed){const d=popup.document;if(d.fullscreenElement)d.exitFullscreen();else d.documentElement.requestFullscreen().catch(()=>log('  全画面にできませんでした（F11 でも全画面になります）'));return}
+  const c=$('cadCard'),f=c.classList.toggle('full');$('btnFull').textContent=f?'元の大きさ':'大きく';document.body.style.overflow=f?'hidden':''};
+
+// ---- 別窓：図面（#cad）をそのまま新しいウィンドウへ移す。閉じると元の場所へ戻る ----
+let cadHome=null;const cadEl=$('cad');
+$('btnWin').onclick=()=>{
+  if(popup&&!popup.closed){popup.close();return}
+  const w=window.open('','zahyou_cad_zumen',`popup,left=0,top=0,width=${screen.availWidth},height=${screen.availHeight}`);
+  if(!w){log('  別窓を開けませんでした（ブラウザのポップアップを許可してください）');return}
+  w.document.open();w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>座標CAD出力 図面</title></head><body></body></html>');w.document.close();
+  document.querySelectorAll('style').forEach(s=>w.document.head.appendChild(s.cloneNode(true)));
+  w.document.head.insertAdjacentHTML('beforeend','<style>html,body{height:100%;margin:0;background:#262d37;overflow:hidden}#cad{height:100vh;border:0;border-radius:0}#cad .cadmain{flex:1;height:auto;min-height:0}@media(max-width:900px){#cad .cvwrap{flex:1;height:auto}}</style>');
+  const c=$('cadCard');if(c.classList.contains('full'))$('btnFull').click();
+  const cad=$('cad');cadHome=document.createElement('div');
+  cadHome.innerHTML='<div class="msg" style="padding:30px;text-align:center;border:1px dashed var(--line);border-radius:6px">図面は別窓に出ています　<button type="button">ここに戻す</button></div>';
+  cadHome.querySelector('button').onclick=()=>popup&&popup.close();
+  cad.replaceWith(cadHome);popup=w;w.document.body.appendChild(w.document.adoptNode(cad));
+  $('btnWin').textContent='窓を閉じて戻す';$('btnFull').textContent='全画面';$('btnFull').title='この窓を全画面にする（F11 と同じ）';
+  w.document.addEventListener('keydown',onKey);
+  new w.ResizeObserver(sizeCanvas).observe(cv);w.addEventListener('resize',sizeCanvas);
+  w.addEventListener('pagehide',backHome);
+  const tm=setInterval(()=>{if(!cadHome)return clearInterval(tm);if(w.closed){clearInterval(tm);backHome()}},500); // 念のため閉じたのを見張る
+  rq=0;sizeCanvas();fit();cmdEl.focus();w.focus()};
+function backHome(){if(!cadHome)return;const cad=cadEl,h=cadHome;cadHome=null;
+  h.replaceWith(document.adoptNode(cad));popup=null;rq=0;overCad=false;
+  $('btnWin').textContent='別窓';$('btnFull').textContent='大きく';$('btnFull').title='作図画面を大きくする';
+  sizeCanvas();render()}
+window.addEventListener('pagehide',()=>{if(popup&&!popup.closed)popup.close()});
 
 // ---- 画層とプロパティ ----
 function newLayer(n){n=(n||'').trim();if(!n)return;if(doc.layers[n]){doc.cur=n;updLayers();return}
   commit(()=>{doc.layers[n]={c:7,on:true,lock:false,user:true};doc.cur=n});log(`  画層「${n}」を作り、現在の画層にしました`)}
-$('btnNewLy').onclick=()=>newLayer(prompt('新しい画層の名前'));
+$('btnNewLy').onclick=()=>newLayer(W().prompt('新しい画層の名前'));
+// プロパティの小窓：#props を小窓へ移す／右の欄へ戻す
+function showPropWin(on){const pw=$('propWin'),p=$('props');if(on===undefined)on=pw.hidden;
+  if(on){pw.querySelector('.pwb').appendChild(p);pw.hidden=false;$('sideProp').hidden=true}
+  else{$('sideProp').after(p);pw.hidden=true;$('sideProp').hidden=false}
+  $('btnProp').classList.toggle('on',on)}
+$('btnProp').onclick=()=>showPropWin();
+$('pwClose').onclick=()=>showPropWin(false);
+(()=>{const pw=$('propWin'),hd=pw.querySelector('.pwh');let d=null;
+  hd.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;hd.setPointerCapture(e.pointerId);d={x:e.clientX,y:e.clientY,l:pw.offsetLeft,t:pw.offsetTop}});
+  hd.addEventListener('pointermove',e=>{if(!d)return;const P=pw.parentElement;
+    pw.style.left=Math.max(0,Math.min(P.clientWidth-60,d.l+e.clientX-d.x))+'px';pw.style.top=Math.max(0,Math.min(P.clientHeight-30,d.t+e.clientY-d.y))+'px';pw.style.right='auto'});
+  hd.addEventListener('pointerup',()=>d=null)})();
 function updLayers(){const cnt={};doc.ents.forEach(e=>cnt[e.ly]=(cnt[e.ly]||0)+1);
   const t=$('layTbl');
   t.innerHTML='<tr><th title="現在の画層：新しく描く図形が入る">現</th><th>名前</th><th>表示</th><th>ロック</th><th>色</th><th>数</th></tr>'+
@@ -831,15 +885,20 @@ function updProps(){const el=$('props'),ss=doc.ents.filter(e=>chosen.has(e.id));
   if(ss.length>1){const c={};ss.forEach(e=>c[TYPENAME[e.t]]=(c[TYPENAME[e.t]]||0)+1);const same=ss.every(e=>e.ly===ss[0].ly);
     h=`<div class="pk">${ss.length}個 選択中</div><div>${Object.entries(c).map(([k,v])=>k+' '+v).join('・')}</div><table>`+row('画層',`<select data-k="ly">${same?'':'<option selected value="">（いろいろ）</option>'}${lyOpts(same?ss[0].ly:'')}</select>`)+'</table>'}
   else{const e=ss[0];h=`<div class="pk">${TYPENAME[e.t]}</div><table>`+row('画層',`<select data-k="ly">${lyOpts(e.ly)}</select>`);
-    if('x' in e)h+=row('x',inp('x',e.x))+row('y',inp('y',e.y))+row('測量',sv([e.x,e.y]));
+    // 位置は 測量座標（m）でも 図面座標でも直せる
+    if('x' in e){const q=cadToSurv([e.x,e.y]);h+='</table><div class="sec">位置（測量座標 m）</div><table>'+row('X',inp('sX',q.X))+row('Y',inp('sY',q.Y))+
+      '</table><div class="sec">位置（図面座標）</div><table>'+row('x',inp('x',e.x))+row('y',inp('y',e.y))+'</table>'+(e.t==='P'?'':'<div class="sec">形</div>')+'<table>'}
     if(e.t==='C')h+=row('半径',inp('r',e.r))+row('',fmtLen(e.r));
     if(e.t==='T')h+=row('文字',inp('s',e.s))+row('高さ',inp('h',e.h))+row('角度',inp('rot',e.rot||0));
-    if(e.t==='L'){const L=Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1]);h+=row('始点',sv(e.a))+row('終点',sv(e.b))+row('長さ',fmtLen(L))}
+    if(e.t==='L'){const L=Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1]),A=cadToSurv(e.a),B=cadToSurv(e.b);
+      h+=row('始点',sv(e.a))+row('終点',sv(e.b))+row('長さ',fmtLen(L))+row('方向角',dms(Math.atan2(B.Y-A.Y,B.X-A.X)*180/Math.PI))}
     if(e.t==='PL'){let L=0;const p=plPts(e);for(let i=1;i<p.length;i++)L+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);h+=row('頂点',e.pts.length)+row('長さ',fmtLen(L))+row('閉じる',`<input type="checkbox" data-k="closed" ${e.closed?'checked':''}>`)}
     if(e.t==='D')h+=row('寸法値',inp('s',e.s))+row('実長',fmtLen(Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1])));
     h+='</table>'}
   el.innerHTML=h;
   el.querySelectorAll('[data-k]').forEach(i=>i.addEventListener('change',()=>{const k=i.dataset.k;let v=i.type==='checkbox'?i.checked:i.value;
+    if(k==='sX'||k==='sY'){const n=num(v);if(isNaN(n))return updProps();
+      return commit(()=>{doc.ents=doc.ents.map(e=>{if(!chosen.has(e.id)||!('x' in e))return e;const q=cadToSurv([e.x,e.y]),p=survToCad(k==='sX'?n:q.X,k==='sY'?n:q.Y);return{...e,x:p[0],y:p[1]}})}),updProps()}
     if(['x','y','r','h','rot'].includes(k)){v=parseLen(v);if(isNaN(v))return updProps()}
     if(k==='ly'&&!doc.layers[v])return;
     commit(()=>{doc.ents=doc.ents.map(e=>chosen.has(e.id)?{...e,[k]:v,...(k==='s'&&e.t==='D'?{meas:false}:{})}:e)});
