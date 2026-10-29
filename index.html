@@ -30,7 +30,49 @@ button:hover{filter:brightness(1.08)}
 .msg{font-size:12px;margin-top:6px;color:var(--sub);white-space:pre-wrap}
 .msg.ng{color:var(--ng)}
 .msg.ok{color:var(--ok)}
-#preview{width:100%;height:440px;cursor:grab;border:1px solid var(--line);border-radius:6px;background:#fff;display:block}
+/* 図面（ブラウザ CAD）：AutoCAD 風の暗い作図画面 */
+#cadCard.full{position:fixed;inset:0;z-index:50;margin:0!important;border-radius:0;display:flex;flex-direction:column;padding:6px}
+#cad{display:flex;flex-direction:column;border:1px solid #11161c;border-radius:6px;overflow:hidden;background:#262d37;color:#d8dee9;font-size:12px}
+.full #cad{flex:1;min-height:0}
+#cadCard.full>:not(#cad){display:none}
+#tb{display:flex;flex-wrap:wrap;gap:3px;padding:4px;background:#2f3743;border-bottom:1px solid #11161c;align-items:center}
+#tb button{background:#3a4352;color:#e6ebf2;padding:4px 9px;font-size:12px;border-radius:4px}
+#tb button.on{background:#1d6fd1}
+#tb .sep{width:1px;align-self:stretch;background:#4a5466;margin:2px 3px}
+#editBar{display:none;margin-left:auto;color:#ffd166;font-size:11px;align-items:center;gap:6px}
+#editBar.show{display:flex}
+#editBar button{background:#8a5a00}
+.cadmain{display:flex;height:540px;min-height:0}
+.full .cadmain{flex:1;height:auto}
+.cvwrap{position:relative;flex:1;min-width:0;background:#1b2028}
+#cv{position:absolute;inset:0;width:100%;height:100%;cursor:none;touch-action:none;display:block}
+#dyn{position:absolute;pointer-events:none;background:rgba(20,26,34,.88);border:1px solid #4a5466;color:#fff;padding:1px 6px;border-radius:3px;font:11px Consolas,monospace;white-space:nowrap;display:none}
+.side{width:250px;flex:0 0 250px;border-left:1px solid #11161c;overflow:auto;background:#262d37}
+.side h3{margin:0;padding:4px 8px;font-size:12px;background:#2f3743;border-bottom:1px solid #11161c;display:flex;justify-content:space-between;align-items:center}
+.side h3 button{background:#3a4352;color:#e6ebf2;padding:1px 6px;font-size:11px}
+#layTbl{width:100%;border-collapse:collapse}
+#layTbl th{font-weight:normal;color:#8b96a8;font-size:11px;text-align:left;padding:2px 3px}
+#layTbl td{padding:2px 3px;border-bottom:1px solid #313946;white-space:nowrap}
+#layTbl td.ln{max-width:90px;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+#layTbl tr.cur td{background:#33425a}
+#layTbl select{background:#1d232c;border:1px solid #4a5466;padding:0 2px;font-size:11px;width:auto}
+#props{padding:6px 8px;line-height:1.5}
+#props .pk{font-weight:bold;color:#fff;margin-bottom:4px}
+#props table{width:100%;border-collapse:collapse}
+#props td{padding:2px 0;vertical-align:top}
+#props td:first-child{color:#8b96a8;width:4.5em}
+#props input,#props select{width:100%;background:#1d232c;color:#e6ebf2;border:1px solid #4a5466;border-radius:3px;padding:1px 4px;font:12px Consolas,"Yu Gothic UI",monospace}
+#props input[type=checkbox]{width:auto}
+#hist{height:4.2em;overflow:auto;padding:2px 8px;background:#1d232c;border-top:1px solid #11161c;font:12px/1.35 Consolas,"MS Gothic",monospace;color:#aab4c3;white-space:pre-wrap}
+.cmdline{display:flex;align-items:center;gap:6px;padding:3px 8px;background:#1d232c;border-top:1px solid #313946}
+#prompt{color:#ffd166;white-space:nowrap;font:12px Consolas,"MS Gothic",monospace}
+#cmd{flex:1;background:transparent;border:0;color:#fff;font:12px Consolas,"MS Gothic",monospace;outline:none;padding:2px 0}
+.stat{display:flex;gap:4px;align-items:center;padding:3px 8px;background:#2f3743;border-top:1px solid #11161c;flex-wrap:wrap}
+.stat button{background:transparent;color:#8b96a8;padding:1px 7px;font-size:11px;border:1px solid #4a5466;border-radius:3px}
+.stat button.on{color:#fff;background:#1d6fd1;border-color:#1d6fd1}
+#coord{font:12px Consolas,monospace;color:#cfd6e2;margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){.cadmain{flex-direction:column;height:auto}.cvwrap{height:400px;flex:none}.side{width:auto;flex:none;border-left:0;border-top:1px solid #11161c;max-height:280px}
+  .full .cadmain{min-height:0}.full .cvwrap{flex:1;height:auto;min-height:200px}.full .side{max-height:30vh}}
 table.list{border-collapse:collapse;width:100%;font-size:12px}
 table.list th,table.list td{border:1px solid var(--line);padding:2px 6px;text-align:right}
 table.list th{background:#eef2f7;text-align:center}
@@ -102,10 +144,37 @@ table.list td:nth-child(2){text-align:left}
 </div>
 
 <div>
-  <div class="card">
-    <h2>③ 下見</h2>
-    <svg id="preview"></svg>
-    <div class="note">ホイール：拡大縮小　ドラッグ：移動　ダブルクリック：全体表示</div>
+  <div class="card" id="cadCard">
+    <h2>③ 図面</h2>
+    <div id="cad">
+      <div id="tb">
+        <button data-cmd="LINE" title="LINE（L）">線</button><button data-cmd="PLINE" title="PLINE（PL）">ポリライン</button><button data-cmd="CIRCLE" title="CIRCLE（C）">円</button><button data-cmd="POINT" title="POINT（PO）">点</button><button data-cmd="TEXT" title="TEXT（T）">文字</button><button data-cmd="DIM" title="DIMALIGNED（DAL）">寸法</button>
+        <span class="sep"></span>
+        <button data-cmd="MOVE" title="MOVE（M）">移動</button><button data-cmd="COPY" title="COPY（CO）">複写</button><button data-cmd="ROTATE" title="ROTATE（RO）">回転</button><button data-cmd="OFFSET" title="OFFSET（O）">オフセット</button><button data-cmd="ERASE" title="ERASE（E）・Delete">削除</button>
+        <span class="sep"></span>
+        <button data-cmd="DIST" title="DIST（DI）">距離</button><button data-cmd="ID" title="ID：座標を調べる">座標</button><button data-cmd="LIST" title="LIST（LI）">一覧</button>
+        <span class="sep"></span>
+        <button data-cmd="UNDO" title="Ctrl+Z">元に戻す</button><button data-cmd="REDO" title="Ctrl+Y">やり直し</button><button data-cmd="ZOOMEXT" title="ZOOM E・ダブルクリック">全体</button><button id="btnFull" title="作図画面を大きくする">大きく</button>
+        <span id="editBar">手で直した図です（①②を変えても図は変わりません）<button data-cmd="REBUILD">作り直す</button></span>
+      </div>
+      <div class="cadmain">
+        <div class="cvwrap"><canvas id="cv"></canvas><div id="dyn"></div></div>
+        <div class="side">
+          <h3>画層<button id="btnNewLy" title="新しい画層を作る">＋</button></h3>
+          <table id="layTbl"></table>
+          <h3>プロパティ</h3>
+          <div id="props"></div>
+        </div>
+      </div>
+      <div id="hist"></div>
+      <div class="cmdline"><span id="prompt">コマンド:</span><input id="cmd" autocomplete="off" spellcheck="false"></div>
+      <div class="stat"><span id="coord"></span>
+        <button data-t="osnap" title="F3">スナップ</button><button data-t="ortho" title="F8">直交</button><button data-t="grid" title="F7">グリッド</button>
+      </div>
+    </div>
+    <div class="note">ホイール：拡大縮小　ホイール押し／右ドラッグ：移動　ダブルクリック：全体　右クリック：Enter　Esc：中止<br>
+      左→右に囲む：中に入った図形を選ぶ　右→左に囲む：掛かった図形も選ぶ　コマンド欄に L・C・M などを打っても使えます（HELP で一覧）<br>
+      点の入力：x,y　@dx,dy（前の点から）　@距離&lt;角度　s X,Y（測量座標 m）　数値だけ＝マウスの向きにその距離（10m のように m を付けると m）</div>
     <div class="msg" id="sizeMsg"></div>
     <div class="listwrap"><table class="list" id="list"></table></div>
   </div>
@@ -287,7 +356,7 @@ const fx=v=>{const s=(Math.round(v*1e4)/1e4).toString();return s.includes('.')||
 // DXF（R2018形式・UTF-8）。ARES は R12 の寸法を線に分解して読むが、R2018 なら寸法のまま読む。
 // 決まった表は ezdxf で作ったひな形（DXFひな形を作る.py で下に埋め込み）を使い、印 %%…%% の所に書き足す
 const DXF2018=/*__DXF2018__*/{"text": "  0\nSECTION\n  2\nHEADER\n  9\n$ACADVER\n  1\nAC1032\n  9\n$ACADMAINTVER\n 90\n4\n  9\n$DWGCODEPAGE\n  3\nANSI_1252\n  9\n$LASTSAVEDBY\n  1\nezdxf\n  9\n$REQUIREDVERSIONS\n160\n0\n  9\n$INSBASE\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$EXTMIN\n 10\n1e+20\n 20\n1e+20\n 30\n1e+20\n  9\n$EXTMAX\n 10\n-1e+20\n 20\n-1e+20\n 30\n-1e+20\n  9\n$LIMMIN\n 10\n0.0\n 20\n0.0\n  9\n$LIMMAX\n 10\n420.0\n 20\n297.0\n  9\n$ORTHOMODE\n 70\n0\n  9\n$REGENMODE\n 70\n1\n  9\n$FILLMODE\n 70\n1\n  9\n$QTEXTMODE\n 70\n0\n  9\n$MIRRTEXT\n 70\n1\n  9\n$LTSCALE\n 40\n1.0\n  9\n$ATTMODE\n 70\n1\n  9\n$TEXTSIZE\n 40\n2.5\n  9\n$TRACEWID\n 40\n1.0\n  9\n$TEXTSTYLE\n  7\nStandard\n  9\n$CLAYER\n  8\n0\n  9\n$CELTYPE\n  6\nByLayer\n  9\n$CECOLOR\n 62\n256\n  9\n$CELTSCALE\n 40\n1.0\n  9\n$DISPSILH\n 70\n0\n  9\n$DIMSCALE\n 40\n1.0\n  9\n$DIMASZ\n 40\n2.5\n  9\n$DIMEXO\n 40\n0.625\n  9\n$DIMDLI\n 40\n3.75\n  9\n$DIMRND\n 40\n0.0\n  9\n$DIMDLE\n 40\n0.0\n  9\n$DIMEXE\n 40\n1.25\n  9\n$DIMTP\n 40\n0.0\n  9\n$DIMTM\n 40\n0.0\n  9\n$DIMTXT\n 40\n2.5\n  9\n$DIMCEN\n 40\n2.5\n  9\n$DIMTSZ\n 40\n0.0\n  9\n$DIMTOL\n 70\n0\n  9\n$DIMLIM\n 70\n0\n  9\n$DIMTIH\n 70\n0\n  9\n$DIMTOH\n 70\n0\n  9\n$DIMSE1\n 70\n0\n  9\n$DIMSE2\n 70\n0\n  9\n$DIMTAD\n 70\n1\n  9\n$DIMZIN\n 70\n8\n  9\n$DIMBLK\n  1\n\n  9\n$DIMASO\n 70\n1\n  9\n$DIMSHO\n 70\n1\n  9\n$DIMPOST\n  1\n\n  9\n$DIMAPOST\n  1\n\n  9\n$DIMALT\n 70\n0\n  9\n$DIMALTD\n 70\n3\n  9\n$DIMALTF\n 40\n0.03937007874\n  9\n$DIMLFAC\n 40\n1.0\n  9\n$DIMTOFL\n 70\n1\n  9\n$DIMTVP\n 40\n0.0\n  9\n$DIMTIX\n 70\n0\n  9\n$DIMSOXD\n 70\n0\n  9\n$DIMSAH\n 70\n0\n  9\n$DIMBLK1\n  1\n\n  9\n$DIMBLK2\n  1\n\n  9\n$DIMSTYLE\n  2\nISO-25\n  9\n$DIMCLRD\n 70\n0\n  9\n$DIMCLRE\n 70\n0\n  9\n$DIMCLRT\n 70\n0\n  9\n$DIMTFAC\n 40\n1.0\n  9\n$DIMGAP\n 40\n0.625\n  9\n$DIMJUST\n 70\n0\n  9\n$DIMSD1\n 70\n0\n  9\n$DIMSD2\n 70\n0\n  9\n$DIMTOLJ\n 70\n0\n  9\n$DIMTZIN\n 70\n8\n  9\n$DIMALTZ\n 70\n0\n  9\n$DIMALTTZ\n 70\n0\n  9\n$DIMUPT\n 70\n0\n  9\n$DIMDEC\n 70\n2\n  9\n$DIMTDEC\n 70\n2\n  9\n$DIMALTU\n 70\n2\n  9\n$DIMALTTD\n 70\n3\n  9\n$DIMTXSTY\n  7\nStandard\n  9\n$DIMAUNIT\n 70\n0\n  9\n$DIMADEC\n 70\n0\n  9\n$DIMALTRND\n 40\n0.0\n  9\n$DIMAZIN\n 70\n0\n  9\n$DIMDSEP\n 70\n44\n  9\n$DIMATFIT\n 70\n3\n  9\n$DIMFRAC\n 70\n0\n  9\n$DIMLDRBLK\n  1\n\n  9\n$DIMLUNIT\n 70\n2\n  9\n$DIMLWD\n 70\n-2\n  9\n$DIMLWE\n 70\n-2\n  9\n$DIMTMOVE\n 70\n0\n  9\n$DIMFXL\n 40\n1.0\n  9\n$DIMFXLON\n 70\n0\n  9\n$DIMJOGANG\n 40\n0.785398163397\n  9\n$DIMTFILL\n 70\n0\n  9\n$DIMTFILLCLR\n 70\n0\n  9\n$DIMARCSYM\n 70\n0\n  9\n$DIMLTYPE\n  6\n\n  9\n$DIMLTEX1\n  6\n\n  9\n$DIMLTEX2\n  6\n\n  9\n$DIMTXTDIRECTION\n 70\n0\n  9\n$LUNITS\n 70\n2\n  9\n$LUPREC\n 70\n4\n  9\n$SKETCHINC\n 40\n1.0\n  9\n$FILLETRAD\n 40\n10.0\n  9\n$AUNITS\n 70\n0\n  9\n$AUPREC\n 70\n2\n  9\n$MENU\n  1\n.\n  9\n$ELEVATION\n 40\n0.0\n  9\n$PELEVATION\n 40\n0.0\n  9\n$THICKNESS\n 40\n0.0\n  9\n$LIMCHECK\n 70\n0\n  9\n$CHAMFERA\n 40\n0.0\n  9\n$CHAMFERB\n 40\n0.0\n  9\n$CHAMFERC\n 40\n0.0\n  9\n$CHAMFERD\n 40\n0.0\n  9\n$SKPOLY\n 70\n0\n  9\n$TDCREATE\n 40\n2461335.844710648\n  9\n$TDUCREATE\n 40\n2458532.153996898\n  9\n$TDUPDATE\n 40\n2461335.844710648\n  9\n$TDUUPDATE\n 40\n2458532.1544311\n  9\n$TDINDWG\n 40\n0.0\n  9\n$TDUSRTIMER\n 40\n0.0\n  9\n$USRTIMER\n 70\n1\n  9\n$ANGBASE\n 50\n0.0\n  9\n$ANGDIR\n 70\n0\n  9\n$PDMODE\n 70\n0\n  9\n$PDSIZE\n 40\n0.0\n  9\n$PLINEWID\n 40\n0.0\n  9\n$SPLFRAME\n 70\n0\n  9\n$SPLINETYPE\n 70\n6\n  9\n$SPLINESEGS\n 70\n8\n  9\n$HANDSEED\n  5\n%%HANDSEED%%\n  9\n$SURFTAB1\n 70\n6\n  9\n$SURFTAB2\n 70\n6\n  9\n$SURFTYPE\n 70\n6\n  9\n$SURFU\n 70\n6\n  9\n$SURFV\n 70\n6\n  9\n$UCSBASE\n  2\n\n  9\n$UCSNAME\n  2\n\n  9\n$UCSORG\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSXDIR\n 10\n1.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSYDIR\n 10\n0.0\n 20\n1.0\n 30\n0.0\n  9\n$UCSORTHOREF\n  2\n\n  9\n$UCSORTHOVIEW\n 70\n0\n  9\n$UCSORGTOP\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGBOTTOM\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGLEFT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGRIGHT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGFRONT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGBACK\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSBASE\n  2\n\n  9\n$PUCSNAME\n  2\n\n  9\n$PUCSORG\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSXDIR\n 10\n1.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSYDIR\n 10\n0.0\n 20\n1.0\n 30\n0.0\n  9\n$PUCSORTHOREF\n  2\n\n  9\n$PUCSORTHOVIEW\n 70\n0\n  9\n$PUCSORGTOP\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGBOTTOM\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGLEFT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGRIGHT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGFRONT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGBACK\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$USERI1\n 70\n0\n  9\n$USERI2\n 70\n0\n  9\n$USERI3\n 70\n0\n  9\n$USERI4\n 70\n0\n  9\n$USERI5\n 70\n0\n  9\n$USERR1\n 40\n0.0\n  9\n$USERR2\n 40\n0.0\n  9\n$USERR3\n 40\n0.0\n  9\n$USERR4\n 40\n0.0\n  9\n$USERR5\n 40\n0.0\n  9\n$WORLDVIEW\n 70\n1\n  9\n$SHADEDGE\n 70\n3\n  9\n$SHADEDIF\n 70\n70\n  9\n$TILEMODE\n 70\n1\n  9\n$MAXACTVP\n 70\n64\n  9\n$PINSBASE\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PLIMCHECK\n 70\n0\n  9\n$PEXTMIN\n 10\n1e+20\n 20\n1e+20\n 30\n1e+20\n  9\n$PEXTMAX\n 10\n-1e+20\n 20\n-1e+20\n 30\n-1e+20\n  9\n$PLIMMIN\n 10\n0.0\n 20\n0.0\n  9\n$PLIMMAX\n 10\n420.0\n 20\n297.0\n  9\n$UNITMODE\n 70\n0\n  9\n$VISRETAIN\n 70\n1\n  9\n$PLINEGEN\n 70\n0\n  9\n$PSLTSCALE\n 70\n1\n  9\n$TREEDEPTH\n 70\n3020\n  9\n$CMLSTYLE\n  2\nStandard\n  9\n$CMLJUST\n 70\n0\n  9\n$CMLSCALE\n 40\n20.0\n  9\n$PROXYGRAPHICS\n 70\n1\n  9\n$MEASUREMENT\n 70\n1\n  9\n$CELWEIGHT\n370\n-1\n  9\n$ENDCAPS\n280\n0\n  9\n$JOINSTYLE\n280\n0\n  9\n$LWDISPLAY\n290\n0\n  9\n$INSUNITS\n 70\n6\n  9\n$HYPERLINKBASE\n  1\n\n  9\n$STYLESHEET\n  1\n\n  9\n$XEDIT\n290\n1\n  9\n$CEPSNTYPE\n380\n0\n  9\n$PSTYLEMODE\n290\n1\n  9\n$FINGERPRINTGUID\n  2\n{ED2110B9-3D2D-451D-84BD-783A68678745}\n  9\n$VERSIONGUID\n  2\n{0D4EBD47-DECF-4A68-8996-08468429A0CC}\n  9\n$EXTNAMES\n290\n1\n  9\n$PSVPSCALE\n 40\n0.0\n  9\n$OLESTARTUP\n290\n0\n  9\n$SORTENTS\n280\n127\n  9\n$INDEXCTL\n280\n0\n  9\n$HIDETEXT\n280\n1\n  9\n$XCLIPFRAME\n280\n1\n  9\n$HALOGAP\n280\n0\n  9\n$OBSCOLOR\n 70\n257\n  9\n$OBSLTYPE\n280\n0\n  9\n$INTERSECTIONDISPLAY\n280\n0\n  9\n$INTERSECTIONCOLOR\n 70\n257\n  9\n$DIMASSOC\n280\n2\n  9\n$PROJECTNAME\n  1\n\n  9\n$CAMERADISPLAY\n290\n0\n  9\n$LENSLENGTH\n 40\n50.0\n  9\n$CAMERAHEIGHT\n 40\n0.0\n  9\n$STEPSPERSEC\n 40\n24.0\n  9\n$STEPSIZE\n 40\n100.0\n  9\n$3DDWFPREC\n 40\n2.0\n  9\n$PSOLWIDTH\n 40\n0.005\n  9\n$PSOLHEIGHT\n 40\n0.08\n  9\n$LOFTANG1\n 40\n1.570796326795\n  9\n$LOFTANG2\n 40\n1.570796326795\n  9\n$LOFTMAG1\n 40\n0.0\n  9\n$LOFTMAG2\n 40\n0.0\n  9\n$LOFTPARAM\n 70\n7\n  9\n$LOFTNORMALS\n280\n1\n  9\n$LATITUDE\n 40\n37.795\n  9\n$LONGITUDE\n 40\n-122.394\n  9\n$NORTHDIRECTION\n 40\n0.0\n  9\n$TIMEZONE\n 70\n-8000\n  9\n$LIGHTGLYPHDISPLAY\n280\n1\n  9\n$TILEMODELIGHTSYNCH\n280\n1\n  9\n$CMATERIAL\n347\n20\n  9\n$SOLIDHIST\n280\n0\n  9\n$SHOWHIST\n280\n1\n  9\n$DWFFRAME\n280\n2\n  9\n$DGNFRAME\n280\n2\n  9\n$REALWORLDSCALE\n290\n1\n  9\n$INTERFERECOLOR\n 62\n256\n  9\n$CSHADOW\n280\n0\n  9\n$SHADOWPLANELOCATION\n 40\n0.0\n  0\nENDSEC\n  0\nSECTION\n  2\nCLASSES\n  0\nCLASS\n  1\nACDBDICTIONARYWDFLT\n  2\nAcDbDictionaryWithDefault\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nSUN\n  2\nAcDbSun\n  3\nSCENEOE\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nVISUALSTYLE\n  2\nAcDbVisualStyle\n  3\nObjectDBX Classes\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMATERIAL\n  2\nAcDbMaterial\n  3\nObjectDBX Classes\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nSCALE\n  2\nAcDbScale\n  3\nObjectDBX Classes\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nTABLESTYLE\n  2\nAcDbTableStyle\n  3\nObjectDBX Classes\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMLEADERSTYLE\n  2\nAcDbMLeaderStyle\n  3\nACDB_MLEADERSTYLE_CLASS\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nDICTIONARYVAR\n  2\nAcDbDictionaryVar\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nCELLSTYLEMAP\n  2\nAcDbCellStyleMap\n  3\nObjectDBX Classes\n 90\n1152\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMENTALRAYRENDERSETTINGS\n  2\nAcDbMentalRayRenderSettings\n  3\nSCENEOE\n 90\n1024\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBDETAILVIEWSTYLE\n  2\nAcDbDetailViewStyle\n  3\nObjectDBX Classes\n 90\n1025\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBSECTIONVIEWSTYLE\n  2\nAcDbSectionViewStyle\n  3\nObjectDBX Classes\n 90\n1025\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nRASTERVARIABLES\n  2\nAcDbRasterVariables\n  3\nISM\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBPLACEHOLDER\n  2\nAcDbPlaceHolder\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nLAYOUT\n  2\nAcDbLayout\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nENDSEC\n  0\nSECTION\n  2\nTABLES\n  0\nTABLE\n  2\nVPORT\n  5\n8\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n  0\nVPORT\n  5\n23\n330\n8\n100\nAcDbSymbolTableRecord\n100\nAcDbViewportTableRecord\n  2\n*Active\n 70\n0\n 10\n0.0\n 20\n0.0\n 11\n1.0\n 21\n1.0\n 12\n0.0\n 22\n0.0\n 13\n0.0\n 23\n0.0\n 14\n0.5\n 24\n0.5\n 15\n0.5\n 25\n0.5\n 16\n0.0\n 26\n0.0\n 36\n1.0\n 17\n0.0\n 27\n0.0\n 37\n0.0\n 40\n1000.0\n 41\n1.34\n 42\n50.0\n 43\n0.0\n 44\n0.0\n 50\n0.0\n 51\n0.0\n 71\n0\n 72\n1000\n 73\n1\n 74\n3\n 75\n0\n 76\n0\n 77\n0\n 78\n0\n281\n0\n 65\n0\n146\n0.0\n  0\nENDTAB\n  0\nTABLE\n  2\nLTYPE\n  5\n2\n330\n0\n100\nAcDbSymbolTable\n 70\n3\n  0\nLTYPE\n  5\n24\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nByBlock\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nLTYPE\n  5\n25\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nByLayer\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nLTYPE\n  5\n26\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nContinuous\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nENDTAB\n  0\nTABLE\n  2\nLAYER\n  5\n1\n330\n0\n100\nAcDbSymbolTable\n 70\n2\n  0\nLAYER\n  5\n27\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\n0\n 70\n0\n 62\n7\n  6\nContinuous\n370\n-3\n390\n13\n347\n21\n  0\nLAYER\n  5\n28\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nDefpoints\n 70\n0\n 62\n7\n  6\nContinuous\n290\n0\n370\n-3\n390\n13\n347\n21\n%%LAYERS%%  0\nENDTAB\n  0\nTABLE\n  2\nSTYLE\n  5\n5\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n  0\nSTYLE\n  5\n29\n330\n5\n100\nAcDbSymbolTableRecord\n100\nAcDbTextStyleTableRecord\n  2\nStandard\n 70\n0\n 40\n0.0\n 41\n1.0\n 50\n0.0\n 71\n0\n 42\n2.5\n  3\ntxt\n  4\n\n  0\nENDTAB\n  0\nTABLE\n  2\nVIEW\n  5\n7\n330\n0\n100\nAcDbSymbolTable\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nUCS\n  5\n6\n330\n0\n100\nAcDbSymbolTable\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nAPPID\n  5\n3\n330\n0\n100\nAcDbSymbolTable\n 70\n3\n  0\nAPPID\n  5\n2A\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nACAD\n 70\n0\n  0\nAPPID\n  5\n2F\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nHATCHBACKGROUNDCOLOR\n 70\n0\n  0\nAPPID\n  5\n30\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nEZDXF\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nDIMSTYLE\n  5\n4\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n100\nAcDbDimStyleTable\n  0\nDIMSTYLE\n105\n2B\n330\n4\n100\nAcDbSymbolTableRecord\n100\nAcDbDimStyleTableRecord\n  2\nStandard\n 70\n0\n 40\n%%DIMSCALE%%\n 41\n1.5\n 42\n1.0\n 43\n3.75\n 44\n2.0\n 45\n0.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n2.5\n140\n%%DIMTXT%%\n141\n2.5\n142\n1.5\n143\n0.03937007874\n144\n1.0\n145\n0.0\n146\n1.0\n147\n%%DIMGAP%%\n148\n0.0\n 69\n0\n 70\n0\n 71\n0\n 72\n0\n 73\n0\n 74\n0\n 75\n0\n 76\n0\n 77\n1\n 78\n8\n 79\n3\n170\n0\n171\n3\n172\n1\n173\n0\n174\n0\n175\n0\n176\n0\n177\n0\n178\n0\n179\n2\n271\n3\n272\n2\n273\n2\n274\n3\n275\n0\n276\n0\n277\n2\n278\n44\n279\n0\n280\n0\n281\n0\n282\n0\n283\n0\n284\n8\n285\n0\n286\n0\n288\n0\n289\n3\n290\n0\n371\n-2\n372\n-2\n  0\nENDTAB\n  0\nTABLE\n  2\nBLOCK_RECORD\n  5\n9\n330\n0\n100\nAcDbSymbolTable\n 70\n2\n  0\nBLOCK_RECORD\n  5\n17\n330\n9\n100\nAcDbSymbolTableRecord\n100\nAcDbBlockTableRecord\n  2\n*Model_Space\n340\n1A\n 70\n0\n280\n1\n281\n0\n  0\nBLOCK_RECORD\n  5\n1B\n330\n9\n100\nAcDbSymbolTableRecord\n100\nAcDbBlockTableRecord\n  2\n*Paper_Space\n340\n1E\n 70\n0\n280\n1\n281\n0\n%%BLOCKRECS%%  0\nENDTAB\n  0\nENDSEC\n  0\nSECTION\n  2\nBLOCKS\n  0\nBLOCK\n  5\n18\n330\n17\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockBegin\n  2\n*Model_Space\n 70\n0\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  3\n*Model_Space\n  1\n\n  0\nENDBLK\n  5\n19\n330\n17\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockEnd\n  0\nBLOCK\n  5\n1C\n330\n1B\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockBegin\n  2\n*Paper_Space\n 70\n0\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  3\n*Paper_Space\n  1\n\n  0\nENDBLK\n  5\n1D\n330\n1B\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockEnd\n%%BLOCKS%%  0\nENDSEC\n  0\nSECTION\n  2\nENTITIES\n%%ENTITIES%%  0\nENDSEC\n  0\nSECTION\n  2\nOBJECTS\n  0\nDICTIONARY\n  5\nA\n330\n0\n100\nAcDbDictionary\n281\n1\n  3\nACAD_COLOR\n350\nB\n  3\nACAD_GROUP\n350\nC\n  3\nACAD_LAYOUT\n350\nD\n  3\nACAD_MATERIAL\n350\nE\n  3\nACAD_MLEADERSTYLE\n350\nF\n  3\nACAD_MLINESTYLE\n350\n10\n  3\nACAD_PLOTSETTINGS\n350\n11\n  3\nACAD_PLOTSTYLENAME\n350\n12\n  3\nACAD_SCALELIST\n350\n14\n  3\nACAD_TABLESTYLE\n350\n15\n  3\nACAD_VISUALSTYLE\n350\n16\n  3\nEZDXF_META\n350\n2D\n  0\nDICTIONARY\n  5\nB\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\nC\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\nD\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nModel\n350\n1A\n  3\nLayout1\n350\n1E\n  0\nDICTIONARY\n  5\nE\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nByBlock\n350\n1F\n  3\nByLayer\n350\n20\n  3\nGlobal\n350\n21\n  0\nDICTIONARY\n  5\nF\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nStandard\n350\n2C\n  0\nDICTIONARY\n  5\n10\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nStandard\n350\n22\n  0\nDICTIONARY\n  5\n11\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nACDBDICTIONARYWDFLT\n  5\n12\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nNormal\n350\n13\n100\nAcDbDictionaryWithDefault\n340\n13\n  0\nACDBPLACEHOLDER\n  5\n13\n330\n12\n  0\nDICTIONARY\n  5\n14\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\n15\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\n16\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nLAYOUT\n  5\n1A\n330\nD\n100\nAcDbPlotSettings\n  1\n\n  4\nA3\n  6\n\n 40\n7.5\n 41\n20.0\n 42\n7.5\n 43\n20.0\n 44\n420.0\n 45\n297.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n0.0\n140\n0.0\n141\n0.0\n142\n1.0\n143\n1.0\n 70\n1024\n 72\n1\n 73\n0\n 74\n5\n  7\n\n 75\n16\n 76\n0\n 77\n2\n 78\n300\n147\n1.0\n148\n0.0\n149\n0.0\n100\nAcDbLayout\n  1\nModel\n 70\n1\n 71\n0\n 10\n0.0\n 20\n0.0\n 11\n420.0\n 21\n297.0\n 12\n0.0\n 22\n0.0\n 32\n0.0\n 14\n1e+20\n 24\n1e+20\n 34\n1e+20\n 15\n-1e+20\n 25\n-1e+20\n 35\n-1e+20\n146\n0.0\n 13\n0.0\n 23\n0.0\n 33\n0.0\n 16\n1.0\n 26\n0.0\n 36\n0.0\n 17\n0.0\n 27\n1.0\n 37\n0.0\n 76\n1\n330\n17\n  0\nLAYOUT\n  5\n1E\n330\nD\n100\nAcDbPlotSettings\n  1\n\n  4\nA3\n  6\n\n 40\n7.5\n 41\n20.0\n 42\n7.5\n 43\n20.0\n 44\n420.0\n 45\n297.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n0.0\n140\n0.0\n141\n0.0\n142\n1.0\n143\n1.0\n 70\n0\n 72\n1\n 73\n0\n 74\n5\n  7\n\n 75\n16\n 76\n0\n 77\n2\n 78\n300\n147\n1.0\n148\n0.0\n149\n0.0\n100\nAcDbLayout\n  1\nLayout1\n 70\n1\n 71\n1\n 10\n0.0\n 20\n0.0\n 11\n420.0\n 21\n297.0\n 12\n0.0\n 22\n0.0\n 32\n0.0\n 14\n1e+20\n 24\n1e+20\n 34\n1e+20\n 15\n-1e+20\n 25\n-1e+20\n 35\n-1e+20\n146\n0.0\n 13\n0.0\n 23\n0.0\n 33\n0.0\n 16\n1.0\n 26\n0.0\n 36\n0.0\n 17\n0.0\n 27\n1.0\n 37\n0.0\n 76\n1\n330\n1B\n  0\nMATERIAL\n  5\n1F\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nByBlock\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMATERIAL\n  5\n20\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nByLayer\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMATERIAL\n  5\n21\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nGlobal\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMLINESTYLE\n  5\n22\n102\n{ACAD_REACTORS\n330\n10\n102\n}\n330\n10\n100\nAcDbMlineStyle\n  2\nStandard\n 70\n0\n  3\n\n 62\n256\n 51\n90.0\n 52\n90.0\n 71\n2\n 49\n0.5\n 62\n256\n  6\nBYLAYER\n 49\n-0.5\n 62\n256\n  6\nBYLAYER\n  0\nMLEADERSTYLE\n  5\n2C\n102\n{ACAD_REACTORS\n330\nF\n102\n}\n330\nF\n100\nAcDbMLeaderStyle\n179\n2\n170\n2\n171\n1\n172\n0\n 90\n2\n 40\n0.0\n 41\n0.0\n173\n1\n 91\n-1056964608\n 92\n-2\n290\n1\n 42\n2.0\n291\n1\n 43\n8.0\n  3\nStandard\n 44\n4.0\n300\n\n342\n29\n174\n1\n175\n1\n176\n0\n178\n1\n 93\n-1056964608\n 45\n4.0\n292\n0\n297\n0\n 46\n4.0\n 94\n-1056964608\n 47\n1.0\n 49\n1.0\n140\n1.0\n294\n1\n141\n0.0\n177\n0\n142\n1.0\n295\n0\n296\n0\n143\n3.75\n271\n0\n272\n9\n273\n9\n  0\nDICTIONARY\n  5\n2D\n330\nA\n100\nAcDbDictionary\n280\n1\n281\n1\n  3\nCREATED_BY_EZDXF\n350\n2E\n  3\nWRITTEN_BY_EZDXF\n350\n31\n  0\nDICTIONARYVAR\n  5\n2E\n330\n2D\n100\nDictionaryVariables\n280\n0\n  1\n1.4.5 @ 2026-10-21T11:16:23.639993+00:00\n  0\nDICTIONARYVAR\n  5\n31\n330\n2D\n100\nDictionaryVariables\n280\n0\n  1\n1.4.5 @ 2026-10-21T11:16:23.640511+00:00\n  0\nENDSEC\n  0\nEOF\n", "seed": "32", "layerTable": "1", "brTable": "9", "msp": "17"}/*__DXF2018_END__*/;
-function toDxf(ents){
+function toDxf(ents,layers={}){
   let hd=parseInt(DXF2018.seed,16);const H=()=>(hd++).toString(16).toUpperCase();
   const w=o=>(c,v)=>o.push(String(c).padStart(3),String(v));
   const lays=[],brs=[],blks=[],es=[];
@@ -297,17 +366,19 @@ function toDxf(ents){
   // al：無し＝左下基準／'L'・'C'・'R'＝左・中央・右寄せで上下は真ん中（x,y がその基準点）
   const text=(g,owner,ly,x,y,h,s,rot,al)=>{head(g,'TEXT',owner,ly);g(100,'AcDbText');g(10,fx(x));g(20,fx(y));g(30,0);g(40,fx(h));g(1,s);
     if(rot)g(50,fx(rot));if(al){g(72,{L:0,C:1,R:2}[al]);g(11,fx(x));g(21,fx(y));g(31,0)}g(100,'AcDbText');if(al)g(73,2)};
-  // 画層（0 と Defpoints はひな形にある）
+  // 画層（0 と Defpoints はひな形にある）。色・表示（色を負に）・ロック（70 の 4）は図面の画層から
   const gl=w(lays);
-  [...new Set(ents.map(e=>e.ly))].filter(l=>l!=='0'&&l!=='Defpoints').forEach(l=>{
+  [...new Set([...Object.keys(layers),...ents.map(e=>e.ly)])].filter(l=>l!=='0'&&l!=='Defpoints').forEach(l=>{
+    const L=layers[l]||{c:7,on:true,lock:false};
     gl(0,'LAYER');gl(5,H());gl(330,DXF2018.layerTable);gl(100,'AcDbSymbolTableRecord');gl(100,'AcDbLayerTableRecord');
-    gl(2,l);gl(70,0);gl(62,7);gl(6,'Continuous')});
+    gl(2,l);gl(70,L.lock?4:0);gl(62,L.on?L.c:-L.c);gl(6,'Continuous')});
   const ge=w(es),gr=w(brs),gb=w(blks),M=DXF2018.msp;
   let dn=0;
   ents.forEach(e=>{
     if(e.t==='P'){head(ge,'POINT',M,e.ly);ge(100,'AcDbPoint');ge(10,fx(e.x));ge(20,fx(e.y));ge(30,0)}
     else if(e.t==='C'){head(ge,'CIRCLE',M,e.ly);ge(100,'AcDbCircle');ge(10,fx(e.x));ge(20,fx(e.y));ge(30,0);ge(40,fx(e.r))}
-    else if(e.t==='T')text(ge,M,e.ly,e.x,e.y,e.h,e.s,0,e.al);
+    else if(e.t==='T')text(ge,M,e.ly,e.x,e.y,e.h,e.s,e.rot||0,e.al);
+    else if(e.t==='L')line(ge,M,e.ly,e.a,e.b);
     else if(e.t==='PL'){head(ge,'LWPOLYLINE',M,e.ly);ge(100,'AcDbPolyline');ge(90,e.pts.length);ge(70,e.closed?1:0);
       e.pts.forEach(p=>{ge(10,fx(p[0]));ge(20,fx(p[1]))})}
     else if(e.t==='D'){
@@ -332,56 +403,458 @@ function toDxf(ents){
     .replace('%%DIMSCALE%%',fx(ds)).replace('%%DIMTXT%%',fx(tx)).replace('%%DIMGAP%%',fx(tx*0.4)).replace('%%HANDSEED%%',H());
 }
 
-// 下見（CAD座標をそのまま描く・y上向き）
-function draw(build,pts){
-  const svg=$('preview');svg.innerHTML='';
-  if(!build.ents.length)return;
-  let xs=[],ys=[];
-  build.ents.forEach(e=>{if(e.t==='PL')e.pts.forEach(p=>{xs.push(p[0]);ys.push(p[1])});else if(e.t==='D')dimParts(e).lines.flat().forEach(p=>{xs.push(p[0]);ys.push(p[1])});else{xs.push(e.x);ys.push(e.y);if(e.t==='T'){xs.push(e.x+e.h*0.9*e.s.length)}}});
-  // 大きな座標のままだと描画の精度が落ちるので、左下を原点にずらして描く
-  const pad=build.H*2||1,ox=Math.min(...xs)-pad,oy=Math.min(...ys)-pad,W=Math.max(...xs)+pad-ox,Hh=Math.max(...ys)+pad-oy;
-  view={x:0,y:-Hh,w:W,h:Hh};setView();
-  const ns='http://www.w3.org/2000/svg';
-  const g=document.createElementNS(ns,'g');g.setAttribute('vector-effect','non-scaling-stroke');svg.appendChild(g);
-  const add=(tag,at,txt)=>{const el=document.createElementNS(ns,tag);for(const k in at)el.setAttribute(k,at[k]);if(txt!=null)el.textContent=txt;g.appendChild(el)};
-  const X=v=>v-ox,Y=v=>-(v-oy);
-  const st={fill:'none','stroke-width':1.2,'vector-effect':'non-scaling-stroke'};
-  build.ents.forEach(e=>{
-    if(e.t==='PL')add(e.closed?'polygon':'polyline',{...st,points:e.pts.map(p=>X(p[0])+','+Y(p[1])).join(' '),stroke:'#1d6fd1'});
-    else if(e.t==='C')add('circle',{...st,cx:X(e.x),cy:Y(e.y),r:e.r,stroke:'#c62828'});
-    else if(e.t==='P')add('circle',{cx:X(e.x),cy:Y(e.y),r:(build.H||1)*0.12,fill:'#111'});
-    else if(e.t==='D'){const d=dimParts(e),t=d.text;
-      d.lines.forEach(([p,r])=>add('line',{...st,x1:X(p[0]),y1:Y(p[1]),x2:X(r[0]),y2:Y(r[1]),stroke:'#2e7d32','stroke-width':0.8}));
-      add('text',{x:X(t.x),y:Y(t.y),'font-size':t.h,fill:'#2e7d32','text-anchor':'middle','dominant-baseline':'central',
-        transform:`rotate(${-t.rot} ${X(t.x)} ${Y(t.y)})`,'font-family':'Yu Gothic UI,Meiryo,sans-serif'},t.s)}
-    else add('text',{x:X(e.x),y:Y(e.y),'font-size':e.h,fill:'#222','font-family':'Yu Gothic UI,Meiryo,sans-serif',
-      ...(e.al?{'text-anchor':{L:'start',C:'middle',R:'end'}[e.al],'dominant-baseline':'central'}:{})},e.s);
-  });
+// ===== 図面（ブラウザで動く CAD）=====
+// 図形は CAD 座標（図面単位）で持つ。種類：P 点／C 円／T 文字／L 線／PL ポリライン／D 寸法
+// 操作の決まりは AutoCAD・CADCraft に合わせる（コマンド欄・F3/F7/F8・左→右は窓選択、右→左は交差選択）
+const ACI={1:'#ff4040',2:'#ffe14d',3:'#3ddc5a',4:'#3fd8e8',5:'#5b84ff',6:'#ff5cff',7:'#ffffff',8:'#8a8a8a',9:'#c8c8c8'};
+const ACINAME={1:'赤',2:'黄',3:'緑',4:'水色',5:'青',6:'紫',7:'白',8:'灰',9:'薄灰'};
+const TYPENAME={P:'点',C:'円',T:'文字',L:'線',PL:'ポリライン',D:'寸法'};
+const SNAPNAME={end:'端点',mid:'中点',cen:'中心',quad:'四半円点',node:'点',ins:'挿入基点',int:'交点',per:'垂線'};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+let doc={ents:[],layers:{'0':{c:7,on:true,lock:false}},cur:'0'},edited=false,eid=1,srcKey=null,needFit=true;
+const chosen=new Set(),tog={osnap:true,ortho:false,grid:false};
+const undoS=[],redoS=[];
+
+// 作った図形を図面に入れる（手で直していなければ①②を変えるたびに作り直す）
+function layerColors(s){return{[s.lyPo]:7,[s.lyPt]:1,[s.lyTx]:7,[s.lyLn]:4,[s.lyDm]:3,[s.lyTb]:2}}
+function setDoc(b,s){
+  const old=doc.layers,L={'0':old['0']||{c:7,on:true,lock:false}},lc=layerColors(s);
+  b.ents.forEach(e=>{if(!L[e.ly])L[e.ly]=old[e.ly]?{...old[e.ly]}:{c:lc[e.ly]??7,on:true,lock:false}});
+  for(const n in old)if(old[n].user&&!L[n])L[n]={...old[n]}; // 自分で作った画層は残す
+  doc={ents:b.ents.map(e=>({...e,id:eid++})),layers:L,cur:L[doc.cur]?doc.cur:'0'};
+  chosen.clear();
 }
-// ホイールで拡大縮小・ドラッグで移動・ダブルクリックで全体
-let view=null;
-function setView(){if(view)$('preview').setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`)}
-(()=>{
-  const svg=$('preview');let drag=null;
-  const pt=e=>{const r=svg.getBoundingClientRect(),s=Math.max(view.w/r.width,view.h/r.height);
-    const ox=(r.width*s-view.w)/2,oy=(r.height*s-view.h)/2;
-    return[view.x-ox+(e.clientX-r.left)*s,view.y-oy+(e.clientY-r.top)*s,s]};
-  svg.addEventListener('wheel',e=>{if(!view)return;e.preventDefault();const[px,py]=pt(e),f=e.deltaY<0?0.8:1.25;
-    view={x:px-(px-view.x)*f,y:py-(py-view.y)*f,w:view.w*f,h:view.h*f};setView()},{passive:false});
-  svg.addEventListener('mousedown',e=>{if(view)drag={x:e.clientX,y:e.clientY,v:{...view},s:pt(e)[2]}});
-  window.addEventListener('mousemove',e=>{if(!drag)return;view={...drag.v,x:drag.v.x-(e.clientX-drag.x)*drag.s,y:drag.v.y-(e.clientY-drag.y)*drag.s};setView()});
-  window.addEventListener('mouseup',()=>drag=null);
-  svg.addEventListener('dblclick',()=>refresh());
-})();
+const S=()=>cur.s,paperK=()=>S().k===1000?1:0.001;
+const cadToSurv=p=>{const s=S(),a=p[0]/s.k,b=p[1]/s.k;return s.swap?{X:b,Y:a}:{X:a,Y:b}};
+const survToCad=(X,Y)=>{const s=S();return s.swap?[Y*s.k,X*s.k]:[X*s.k,Y*s.k]};
+const fmtLen=L=>S().k===1000?(L/1000).toFixed(3)+'m':L.toFixed(3);
+function dms(deg){deg=((deg%360)+360)%360;let d=Math.floor(deg),m=Math.floor((deg-d)*60),s=((deg-d)*60-m)*60;
+  if(s>=59.95){s=0;m++}if(m>=60){m=0;d++}return `${d}°${String(m).padStart(2,'0')}′${s.toFixed(1).padStart(4,'0')}″`}
+
+// ---- 形（選択・範囲・全体表示に使う折れ線の集まり）----
+const mctx=document.createElement('canvas').getContext('2d');
+function textW(s,h){mctx.font='100px "Yu Gothic UI",Meiryo,sans-serif';return mctx.measureText(s).width/100*h}
+function textBox(t){
+  const w=textW(t.s,t.h),x0=t.al==='C'?-w/2:t.al==='R'?-w:0,y0=t.al?-t.h/2:-t.h*0.2,y1=t.al?t.h/2:t.h;
+  const r=(t.rot||0)*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
+  return[[x0,y0],[x0+w,y0],[x0+w,y1],[x0,y1],[x0,y0]].map(([u,v])=>[t.x+u*c-v*sn,t.y+u*sn+v*c]);
+}
+const plPts=e=>e.t==='L'?[e.a,e.b]:e.closed?[...e.pts,e.pts[0]]:e.pts;
+function shapes(e){
+  switch(e.t){
+    case 'P':return[[[e.x,e.y]]];
+    case 'C':{const a=[];for(let i=0;i<=48;i++){const t=i/48*2*Math.PI;a.push([e.x+e.r*Math.cos(t),e.y+e.r*Math.sin(t)])}return[a]}
+    case 'T':return[textBox(e)];
+    case 'L':case 'PL':return[plPts(e)];
+    case 'D':{const d=dimParts(e);return[...d.lines,textBox({...d.text,al:'C'})]}
+  }return[];
+}
+function segD(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;let t=L?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
+function segX(p1,p2,p3,p4,inf){const d=(p2[0]-p1[0])*(p4[1]-p3[1])-(p2[1]-p1[1])*(p4[0]-p3[0]);if(!d)return null;
+  const t=((p3[0]-p1[0])*(p4[1]-p3[1])-(p3[1]-p1[1])*(p4[0]-p3[0]))/d,u=((p3[0]-p1[0])*(p2[1]-p1[1])-(p3[1]-p1[1])*(p2[0]-p1[0]))/d;
+  return inf||(t>=0&&t<=1&&u>=0&&u<=1)?[p1[0]+t*(p2[0]-p1[0]),p1[1]+t*(p2[1]-p1[1])]:null}
+function inPoly(p,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+function entDist(e,p){let m=Infinity;
+  for(const s of shapes(e)){if(s.length===1)m=Math.min(m,Math.hypot(p[0]-s[0][0],p[1]-s[0][1]));for(let i=1;i<s.length;i++)m=Math.min(m,segD(p,s[i-1],s[i]))}
+  if(e.t==='T'&&inPoly(p,textBox(e)))m=0;return m}
+const layerOf=e=>doc.layers[e.ly]||{c:7,on:true,lock:false};
+const usable=e=>{const l=layerOf(e);return l.on&&!l.lock};
+const inR=(p,r)=>p[0]>=r.x0&&p[0]<=r.x1&&p[1]>=r.y0&&p[1]<=r.y1;
+function segRect(a,b,r){if(inR(a,r)||inR(b,r))return true;const c=[[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]];for(let i=0;i<4;i++)if(segX(a,b,c[i],c[(i+1)%4]))return true;return false}
+function inBox(e,r,cross){const sh=shapes(e);
+  if(!cross)return sh.every(s=>s.every(p=>inR(p,r)));
+  return sh.some(s=>s.length===1?inR(s[0],r):s.some((p,i)=>i&&segRect(s[i-1],p,r)))}
+
+// ---- 図形の移動・回転（寸法は向きを付け直す）----
+function dimFix(e){const L=Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1])||1,u=[(e.b[0]-e.a[0])/L,(e.b[1]-e.a[1])/L],n=[-u[1],u[0]];
+  const o=[(e.a[0]+e.b[0])/2+n[0]*e.off,(e.a[1]+e.b[1])/2+n[1]*e.off];
+  return{...e,u,n,o,...(e.meas?{s:(L/S().k).toFixed(S().k===1000?3:3)}:{})}}
+function xform(e,f,ang=0){const c={...e};
+  if('x' in e){const q=f([e.x,e.y]);c.x=q[0];c.y=q[1]}
+  if(e.t==='T'&&ang)c.rot=(((e.rot||0)+ang)%360+360)%360;
+  if(e.t==='L'){c.a=f(e.a);c.b=f(e.b)}
+  if(e.t==='PL')c.pts=e.pts.map(f);
+  if(e.t==='D'){c.a=f(e.a);c.b=f(e.b);return dimFix(c)}
+  return c}
+const tr=(d)=>p=>[p[0]+d[0],p[1]+d[1]];
+const rotF=(b,a)=>{const c=Math.cos(a),s=Math.sin(a);return p=>{const x=p[0]-b[0],y=p[1]-b[1];return[b[0]+x*c-y*s,b[1]+x*s+y*c]}};
+function gripsOf(e){
+  switch(e.t){
+    case 'P':case 'T':return[{p:[e.x,e.y],f:(e,q)=>({...e,x:q[0],y:q[1]})}];
+    case 'C':return[{p:[e.x,e.y],f:(e,q)=>({...e,x:q[0],y:q[1]})},{p:[e.x+e.r,e.y],f:(e,q)=>({...e,r:Math.hypot(q[0]-e.x,q[1]-e.y)})}];
+    case 'L':return[{p:e.a,f:(e,q)=>({...e,a:q})},{p:e.b,f:(e,q)=>({...e,b:q})}];
+    case 'PL':return e.pts.map((p,i)=>({p,f:(e,q)=>({...e,pts:e.pts.map((r,j)=>j===i?q:r)})}));
+    case 'D':return[{p:e.a,f:(e,q)=>dimFix({...e,a:q})},{p:e.b,f:(e,q)=>dimFix({...e,b:q})}];
+  }return[];
+}
+function snapPts(e){const r=[];
+  switch(e.t){
+    case 'P':r.push({p:[e.x,e.y],k:'node'});break;
+    case 'C':r.push({p:[e.x,e.y],k:'cen'});[0,1,2,3].forEach(i=>r.push({p:[e.x+e.r*Math.cos(i*Math.PI/2),e.y+e.r*Math.sin(i*Math.PI/2)],k:'quad'}));break;
+    case 'T':r.push({p:[e.x,e.y],k:'ins'});break;
+    case 'L':case 'PL':{const p=plPts(e);p.forEach(q=>r.push({p:q,k:'end'}));for(let i=1;i<p.length;i++)r.push({p:[(p[i-1][0]+p[i][0])/2,(p[i-1][1]+p[i][1])/2],k:'mid'});break}
+    case 'D':r.push({p:e.a,k:'end'},{p:e.b,k:'end'});break;
+  }return r}
+
+// ---- 画面（canvas）と表示範囲 ----
+const cv=$('cv'),ctx=cv.getContext('2d'),cmdEl=$('cmd');
+let CW=0,CH=0,V={cx:0,cy:0,s:1},mouse=null,snap=null,hover=null,box=null,pending=null,lastCmd='',gridStep=0,rq=0,overCad=false;
+const toS=p=>[(p[0]-V.cx)*V.s+CW/2,CH/2-(p[1]-V.cy)*V.s];
+const toW=(sx,sy)=>[(sx-CW/2)/V.s+V.cx,(CH/2-sy)/V.s+V.cy];
+function extents(){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  doc.ents.forEach(e=>{if(!layerOf(e).on)return;shapes(e).forEach(s=>s.forEach(p=>{x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1])}))});
+  return x0<=x1?{x0,y0,x1,y1}:null}
+function zoomTo(b){if(!b||!CW)return;const span=Math.max(b.x1-b.x0,b.y1-b.y0)||1000;
+  V.cx=(b.x0+b.x1)/2;V.cy=(b.y0+b.y1)/2;V.s=Math.min(CW/Math.max(b.x1-b.x0,span*0.01),CH/Math.max(b.y1-b.y0,span*0.01))*0.92;render()}
+function fit(){zoomTo(extents())}
+function sizeCanvas(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;if(!r.width)return;
+  const cx=V.cx,cy=V.cy;CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);V.cx=cx;V.cy=cy;paint()}
+new ResizeObserver(sizeCanvas).observe(cv);
+function render(){if(!rq)rq=requestAnimationFrame(()=>{rq=0;paint()})}
+
+function paint(){
+  if(!CW)return;
+  if(needFit&&doc.ents.length){needFit=false;fit()}
+  ctx.fillStyle='#1b2028';ctx.fillRect(0,0,CW,CH);
+  if(tog.grid)drawGrid();
+  for(const e of doc.ents){const l=layerOf(e);if(!l.on)continue;
+    let col=ACI[l.c]||'#fff';if(l.lock)col='#6b7380';
+    drawEnt(e,col,chosen.has(e.id)?'sel':hover&&hover.id===e.id?'hover':'')}
+  const cp=curPoint();
+  if(pending&&pending.rubber&&cp){try{pending.rubber(cp).forEach(e=>e&&drawEnt(e,'#8fc7ff','temp'))}catch(err){}}
+  if(pending&&pending.base&&cp&&pending.kind!=='select'){ctx.strokeStyle='rgba(255,255,255,.35)';ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(...toS(pending.base));ctx.lineTo(...toS(cp));ctx.stroke();ctx.setLineDash([])}
+  for(const e of doc.ents)if(chosen.has(e.id)&&chosen.size<=200)gripsOf(e).forEach(g=>{const[x,y]=toS(g.p);ctx.fillStyle='#2f7bff';ctx.fillRect(x-4,y-4,8,8);ctx.strokeStyle='#cfe0ff';ctx.strokeRect(x-4,y-4,8,8)});
+  if(box&&mouse){const cross=mouse[0]<box.x;ctx.fillStyle=cross?'rgba(60,200,90,.15)':'rgba(60,120,255,.15)';ctx.strokeStyle=cross?'#4cd36b':'#5b8cff';
+    ctx.setLineDash(cross?[5,4]:[]);ctx.fillRect(box.x,box.y,mouse[0]-box.x,mouse[1]-box.y);ctx.strokeRect(box.x,box.y,mouse[0]-box.x,mouse[1]-box.y);ctx.setLineDash([])}
+  drawAxis();
+  if(snap)drawSnap(snap);
+  if(mouse)drawCursor();
+  updDyn();
+}
+function drawGrid(){let st=Math.pow(10,Math.floor(Math.log10(25/V.s)));for(const m of[1,2,5,10]){if(st*m*V.s>=25){st*=m;break}}gridStep=st;
+  const[x0,y1]=toW(0,0),[x1,y0]=toW(CW,CH);ctx.strokeStyle='#262e3a';ctx.lineWidth=1;ctx.beginPath();
+  for(let x=Math.ceil(x0/st)*st;x<=x1;x+=st){const sx=Math.round(toS([x,0])[0])+.5;ctx.moveTo(sx,0);ctx.lineTo(sx,CH)}
+  for(let y=Math.ceil(y0/st)*st;y<=y1;y+=st){const sy=Math.round(toS([0,y])[1])+.5;ctx.moveTo(0,sy);ctx.lineTo(CW,sy)}ctx.stroke()}
+function drawAxis(){const x=18,y=CH-18;ctx.strokeStyle='#9aa4b5';ctx.fillStyle='#9aa4b5';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+34,y);ctx.moveTo(x,y);ctx.lineTo(x,y-34);ctx.stroke();ctx.lineWidth=1;
+  ctx.font='11px Consolas,monospace';ctx.textBaseline='middle';const sw=cur&&S().swap;ctx.fillText(sw?'x(東)':'x',x+37,y);ctx.fillText(sw?'y(北)':'y',x-4,y-42)}
+function drawEnt(e,col,mode){
+  ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=mode==='hover'?2.5:1.2;ctx.setLineDash(mode==='sel'?[7,4]:mode==='temp'?[4,3]:[]);
+  if(e.t==='P'){const[x,y]=toS([e.x,e.y]);ctx.fillRect(x-1.5,y-1.5,3,3)}
+  else if(e.t==='C'){const[x,y]=toS([e.x,e.y]);ctx.beginPath();ctx.arc(x,y,Math.max(e.r*V.s,0.5),0,Math.PI*2);ctx.stroke()}
+  else if(e.t==='L'||e.t==='PL'){ctx.beginPath();plPts(e).forEach((p,i)=>{const q=toS(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])});ctx.stroke()}
+  else if(e.t==='T')drawText(e);
+  else if(e.t==='D'){const d=dimParts(e);ctx.beginPath();d.lines.forEach(([p,r])=>{ctx.moveTo(...toS(p));ctx.lineTo(...toS(r))});ctx.stroke();drawText({...d.text,al:'C'})}
+  ctx.setLineDash([]);
+}
+function drawText(t){const px=t.h*V.s;
+  if(px<3){const b=textBox(t);ctx.beginPath();ctx.moveTo(...toS(b[0]));ctx.lineTo(...toS(b[1]));ctx.stroke();return}
+  const[x,y]=toS([t.x,t.y]);ctx.save();ctx.translate(x,y);ctx.rotate(-(t.rot||0)*Math.PI/180);
+  ctx.font=`${px}px "Yu Gothic UI",Meiryo,sans-serif`;ctx.textAlign=t.al==='C'?'center':t.al==='R'?'right':'left';ctx.textBaseline=t.al?'middle':'alphabetic';
+  ctx.fillText(t.s,0,0);ctx.restore()}
+function drawSnap(s){const[x,y]=toS(s.p),r=6;ctx.strokeStyle='#ffd400';ctx.lineWidth=2;ctx.beginPath();
+  switch(s.k){
+    case 'end':ctx.rect(x-r,y-r,2*r,2*r);break;
+    case 'mid':ctx.moveTo(x,y-r);ctx.lineTo(x+r,y+r*0.8);ctx.lineTo(x-r,y+r*0.8);ctx.closePath();break;
+    case 'cen':ctx.arc(x,y,r,0,Math.PI*2);break;
+    case 'quad':ctx.moveTo(x,y-r);ctx.lineTo(x+r,y);ctx.lineTo(x,y+r);ctx.lineTo(x-r,y);ctx.closePath();break;
+    case 'node':ctx.arc(x,y,r,0,Math.PI*2);ctx.moveTo(x-r,y-r);ctx.lineTo(x+r,y+r);ctx.moveTo(x+r,y-r);ctx.lineTo(x-r,y+r);break;
+    case 'ins':ctx.rect(x-r,y-r,r,r);ctx.rect(x,y,r,r);break;
+    case 'per':ctx.moveTo(x-r,y-r);ctx.lineTo(x-r,y+r);ctx.lineTo(x+r,y+r);ctx.moveTo(x-r,y);ctx.lineTo(x,y);ctx.lineTo(x,y+r);break;
+    default:ctx.moveTo(x-r,y-r);ctx.lineTo(x+r,y+r);ctx.moveTo(x+r,y-r);ctx.lineTo(x-r,y+r);
+  }ctx.stroke();ctx.lineWidth=1}
+function drawCursor(){const[x,y]=mouse,L=Math.max(CW,CH)*0.05;ctx.strokeStyle='#e6e6e6';ctx.lineWidth=1;ctx.beginPath();
+  ctx.moveTo(x-L,y+.5);ctx.lineTo(x+L,y+.5);ctx.moveTo(x+.5,y-L);ctx.lineTo(x+.5,y+L);ctx.stroke();
+  if(!pending||pending.kind==='select'){ctx.strokeRect(x-4.5,y-4.5,9,9)}}
+function updDyn(){const d=$('dyn'),c=$('coord');
+  if(!mouse){d.style.display='none';return}
+  const w=curPoint(),q=cadToSurv(w);
+  c.textContent=`x ${w[0].toFixed(1)}  y ${w[1].toFixed(1)}　｜　測量 X=${q.X.toFixed(3)}  Y=${q.Y.toFixed(3)}${tog.grid&&gridStep?'　｜　グリッド '+fmtLen(gridStep):''}`;
+  let t='';
+  if(pending&&pending.base&&pending.kind!=='select'){const dx=w[0]-pending.base[0],dy=w[1]-pending.base[1];t=`${fmtLen(Math.hypot(dx,dy))}  ${(Math.atan2(dy,dx)*180/Math.PI).toFixed(2)}°`}
+  if(snap)t=SNAPNAME[snap.k]+(t?'　'+t:'');
+  if(!t){d.style.display='none';return}
+  d.textContent=t;d.style.display='block';d.style.left=Math.min(mouse[0]+18,CW-d.offsetWidth-4)+'px';d.style.top=Math.min(mouse[1]+20,CH-24)+'px'}
+
+// ---- スナップ・カーソルの点 ----
+function findSnap(sp){
+  if(!tog.osnap)return null;const ap=12,w=toW(...sp);let best=null,bd=ap;const near=[];
+  for(const e of doc.ents){if(!layerOf(e).on)continue;
+    for(const s of snapPts(e)){const q=toS(s.p),d=Math.hypot(q[0]-sp[0],q[1]-sp[1]);if(d<bd){bd=d;best=s}}
+    if((e.t==='L'||e.t==='PL'||e.t==='C')&&entDist(e,w)*V.s<ap)near.push(e)}
+  // 交点：カーソルの近くにある線・円どうし
+  const segs=[];near.forEach(e=>{const p=e.t==='C'?shapes(e)[0]:plPts(e);for(let i=1;i<p.length;i++)segs.push([p[i-1],p[i],e.id])});
+  for(let i=0;i<segs.length;i++)for(let j=i+1;j<segs.length;j++){if(segs[i][2]===segs[j][2]&&Math.abs(i-j)<2)continue;
+    const x=segX(segs[i][0],segs[i][1],segs[j][0],segs[j][1]);if(x){const q=toS(x),d=Math.hypot(q[0]-sp[0],q[1]-sp[1]);if(d<bd-0.5){bd=d;best={p:x,k:'int'}}}}
+  // 垂線：前の点から線へ下ろした足
+  if(!best&&pending&&pending.base)for(const e of near){if(e.t==='C')continue;const p=plPts(e);for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;if(!L)continue;
+    const t=((pending.base[0]-a[0])*dx+(pending.base[1]-a[1])*dy)/L;if(t<0||t>1)continue;const f=[a[0]+t*dx,a[1]+t*dy],q=toS(f),d=Math.hypot(q[0]-sp[0],q[1]-sp[1]);if(d<bd){bd=d;best={p:f,k:'per'}}}}
+  return best}
+function curPoint(){if(!mouse)return[V.cx,V.cy];if(snap)return snap.p;let w=toW(...mouse);
+  if(tog.ortho&&pending&&pending.base){const b=pending.base;w=Math.abs(w[0]-b[0])>=Math.abs(w[1]-b[1])?[w[0],b[1]]:[b[0],w[1]]}return w}
+function hitAt(w){const tol=7/V.s;let best=null,bd=tol;for(const e of doc.ents){if(!usable(e))continue;const d=entDist(e,w);if(d<=bd){bd=d;best=e}}return best}
+const wantsPoint=()=>pending&&pending.kind!=='select'&&pending.kind!=='text';
+
+// ---- コマンドの受け答え ----
+const CANCEL={};
+function log(s){const h=$('hist');h.textContent+=(h.textContent?'\n':'')+s;h.scrollTop=h.scrollHeight}
+function setPrompt(p){$('prompt').textContent=(p||'コマンド')+':'}
+function ask(o){return new Promise(res=>{pending={...o,res};setPrompt(o.prompt);render()})}
+function resolveP(v){const p=pending;pending=null;snap=null;setPrompt();p.res(v)}
+async function need(o){const v=await ask(o);if(v===null)throw CANCEL;return v}
+function cancel(){const b=box;box=null;if(pending){log('*キャンセル*');resolveP(null)}else if(!b){chosen.clear();updProps()}render()}
+const parseLen=t=>{const m=/^(.*?)(m)?$/i.exec(hankaku(String(t)).trim());const x=num(m[1]);return m[2]?x*S().k:x};
+function parsePoint(v,base){v=hankaku(v).replace(/\s+/g,'');let m;
+  if(m=/^[sS測]([^,]+),(.+)$/.exec(v)){const X=num(m[1]),Y=num(m[2]);return isNaN(X)||isNaN(Y)?null:survToCad(X,Y)}
+  if(m=/^@([^<,]+)<(.+)$/.exec(v)){if(!base)return null;const d=parseLen(m[1]),a=num(m[2])*Math.PI/180;return isNaN(d)||isNaN(a)?null:[base[0]+d*Math.cos(a),base[1]+d*Math.sin(a)]}
+  if(m=/^(@)?([^,]+),(.+)$/.exec(v)){const x=parseLen(m[2]),y=parseLen(m[3]);if(isNaN(x)||isNaN(y))return null;return m[1]?(base?[base[0]+x,base[1]+y]:null):[x,y]}
+  return null}
+function submit(raw){const v=raw.trim();
+  if(pending){const k=pending.kind;if(v)log(`${pending.prompt}: ${v}`);
+    if(k==='text'){if(!v&&!pending.allowEmpty)return;return resolveP(v)}
+    if(!v){if(k==='select')return resolveP([...chosen]);if(pending.allowEnd)return resolveP('END');return}
+    const up=hankaku(v).toUpperCase();
+    if(pending.keys&&pending.keys.includes(up))return resolveP(up);
+    if(k==='select'){if(up==='ALL'){doc.ents.forEach(e=>usable(e)&&chosen.add(e.id));updProps();render();return}log('  Enter で決定・ALL で全部');return}
+    if(k!=='number'){const p=parsePoint(v,pending.base);if(p)return resolveP(p)}
+    const n=parseLen(v);
+    if(!isNaN(n)){
+      if(k==='point'&&pending.base){const c=curPoint(),dx=c[0]-pending.base[0],dy=c[1]-pending.base[1],L=Math.hypot(dx,dy);
+        if(!L){log('  向きが決まりません（マウスを動かしてから）');return}return resolveP([pending.base[0]+dx/L*n,pending.base[1]+dy/L*n])}
+      if(k==='number'||k==='pointOrNumber')return resolveP(n)}
+    log('  入力が読めません');return}
+  if(!v){if(lastCmd)run(lastCmd);return}
+  log('コマンド: '+v);run(v)}
+cmdEl.addEventListener('keydown',e=>{
+  if(e.isComposing)return;
+  if(e.key==='Enter'||(e.key===' '&&!(pending&&pending.kind==='text'))){e.preventDefault();const v=cmdEl.value;cmdEl.value='';submit(v)}
+  else if(e.key==='Escape'){e.preventDefault();cmdEl.value='';cancel()}});
+
+const ALIAS={L:'LINE',PL:'PLINE',C:'CIRCLE',PO:'POINT',T:'TEXT',DT:'TEXT',DAL:'DIM',DIMALIGNED:'DIM',DIMLINEAR:'DIM',M:'MOVE',CO:'COPY',CP:'COPY',RO:'ROTATE',O:'OFFSET',E:'ERASE',DEL:'ERASE',DI:'DIST',LI:'LIST',Z:'ZOOM',ZE:'ZOOMEXT',U:'UNDO',LA:'LAYER','?':'HELP'};
+const CMDS={};
+let running=null;
+async function run(v,fn){
+  const parts=String(v).trim().split(/\s+/);let name=hankaku(parts[0]).toUpperCase();name=ALIAS[name]||name;
+  const f=fn||CMDS[name];if(!f){log(`  「${parts[0]}」というコマンドはありません（HELP で一覧）`);return}
+  if(pending){cancel();await Promise.resolve()}
+  if(!fn&&!['UNDO','REDO','ZOOMEXT','HELP'].includes(name))lastCmd=name;
+  running=name;document.querySelectorAll('#tb [data-cmd]').forEach(b=>b.classList.toggle('on',b.dataset.cmd===name));
+  try{await f(parts.slice(1))}catch(err){if(err!==CANCEL){console.error(err);log('  エラー: '+err.message)}}
+  finally{if(running===name){running=null;pending=null;setPrompt();document.querySelectorAll('#tb [data-cmd]').forEach(b=>b.classList.remove('on'))}
+    // 描く・直すコマンドのあとは選択を外す（調べる・表示のコマンドとグリップは残す）
+    if(!['LIST','GRIP','ZOOM','ZOOMEXT','UNDO','REDO','HELP','DIST','ID','LAYER'].includes(name))chosen.clear();
+    snap=null;render();updProps()}}
+
+// 図面を変える操作は元に戻せるように控えてから
+const snapDoc=()=>JSON.stringify({ents:doc.ents,layers:doc.layers,cur:doc.cur,edited});
+function commit(fn){undoS.push(snapDoc());if(undoS.length>100)undoS.shift();redoS.length=0;fn();edited=true;showEdited();updLayers();render()}
+function loadDoc(j){const o=JSON.parse(j);doc={ents:o.ents,layers:o.layers,cur:o.cur};edited=o.edited;
+  for(const id of[...chosen])if(!doc.ents.some(e=>e.id===id))chosen.delete(id);showEdited();updLayers();updProps();render()}
+function showEdited(){$('editBar').classList.toggle('show',edited)}
+const addEnts=a=>{const r=a.map(e=>({...e,id:eid++,ly:e.ly||doc.cur}));commit(()=>doc.ents.push(...r));return r};
+const replaceEnts=a=>{const m=new Map(a.map(e=>[e.id,e]));commit(()=>{doc.ents=doc.ents.map(e=>m.get(e.id)||e)})};
+async function getSel(prompt){
+  if(chosen.size)return doc.ents.filter(e=>chosen.has(e.id)&&usable(e));
+  const ids=await need({kind:'select',prompt:prompt||'図形を選ぶ（Enter で決定）'});
+  const r=doc.ents.filter(e=>ids.includes(e.id));if(!r.length)throw CANCEL;return r}
+const defH=()=>(cur.b.H||2.5*S().scale*paperK());
+function makeDim(a,b,pos){const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(!L)return null;const u=[(b[0]-a[0])/L,(b[1]-a[1])/L],n=[-u[1],u[0]];
+  const off=(pos[0]-a[0])*n[0]+(pos[1]-a[1])*n[1]||1,ds=S().scale*paperK();
+  return dimFix({t:'D',a,b,u,n,off,ds,h:defH()*0.8,s:'',meas:true})}
+
+CMDS.LINE=async()=>{let p=await need({kind:'point',prompt:'始点'}),first=p;const segs=[];
+  for(;;){const v=await need({kind:'point',prompt:segs.length>=2?'次の点（C＝閉じる・U＝戻す・Enter＝終わり）':'次の点（U＝戻す・Enter＝終わり）',base:p,allowEnd:true,keys:['C','U'],rubber:q=>[{t:'L',a:p,b:q}]});
+    if(v==='END')return;
+    if(v==='U'){if(segs.length){CMDS.UNDO();p=segs.pop()}continue}
+    if(v==='C'){if(segs.length>=2)addEnts([{t:'L',a:p,b:first}]);return}
+    addEnts([{t:'L',a:p,b:v}]);segs.push(p);p=v}};
+CMDS.PLINE=async()=>{const pts=[await need({kind:'point',prompt:'始点'})];
+  for(;;){const v=await need({kind:'point',prompt:pts.length>=3?'次の点（C＝閉じる・U＝戻す・Enter＝終わり）':'次の点（U＝戻す・Enter＝終わり）',base:pts[pts.length-1],allowEnd:true,keys:['C','U'],rubber:q=>[{t:'PL',pts:[...pts,q]}]});
+    if(v==='U'){if(pts.length>1)pts.pop();continue}
+    if(v==='END'||v==='C'){if(pts.length>=2)addEnts([{t:'PL',pts,closed:v==='C'&&pts.length>=3}]);return}
+    pts.push(v)}};
+CMDS.CIRCLE=async()=>{const c=await need({kind:'point',prompt:'中心'});
+  const v=await need({kind:'pointOrNumber',prompt:'半径（数値か点）',base:c,rubber:q=>[{t:'C',x:c[0],y:c[1],r:Math.hypot(q[0]-c[0],q[1]-c[1])}]});
+  const r=Array.isArray(v)?Math.hypot(v[0]-c[0],v[1]-c[1]):v;if(r>0)addEnts([{t:'C',x:c[0],y:c[1],r}])};
+CMDS.POINT=async()=>{for(;;){const v=await need({kind:'point',prompt:'点の位置（Enter＝終わり）',allowEnd:true});if(v==='END')return;addEnts([{t:'P',x:v[0],y:v[1]}])}};
+let lastTextH=0;
+CMDS.TEXT=async()=>{const p=await need({kind:'point',prompt:'文字の位置（左下）'});const h0=lastTextH||defH();
+  let h=await need({kind:'pointOrNumber',prompt:`文字の高さ <${fmtLen(h0)}>`,base:p,allowEnd:true});h=h==='END'?h0:Array.isArray(h)?Math.hypot(h[0]-p[0],h[1]-p[1]):h;lastTextH=h;
+  let a=await need({kind:'pointOrNumber',prompt:'角度 <0>',base:p,allowEnd:true});a=a==='END'?0:Array.isArray(a)?Math.atan2(a[1]-p[1],a[0]-p[0])*180/Math.PI:a;
+  for(let y=p[1];;y-=h*1.6){const s=await need({kind:'text',prompt:'文字（何も打たずに Enter＝終わり）',allowEmpty:true,base:null,rubber:()=>[]});if(!s)return;
+    const q=rotF(p,a*Math.PI/180)([p[0],y]);addEnts([{t:'T',x:q[0],y:q[1],h,s,rot:a}])}};
+CMDS.DIM=async()=>{const a=await need({kind:'point',prompt:'寸法の1点目'});const b=await need({kind:'point',prompt:'2点目',base:a,rubber:q=>[{t:'L',a,b:q}]});
+  const p=await need({kind:'point',prompt:'寸法線の位置',rubber:q=>[makeDim(a,b,q)]});const d=makeDim(a,b,p);if(d)addEnts([d])};
+CMDS.MOVE=async()=>{const ss=await getSel();chosen.clear();ss.forEach(e=>chosen.add(e.id));const b=await need({kind:'point',prompt:'基点'});
+  const t=await need({kind:'point',prompt:'移動先',base:b,rubber:q=>ss.map(e=>xform(e,tr([q[0]-b[0],q[1]-b[1]])))});
+  replaceEnts(ss.map(e=>xform(e,tr([t[0]-b[0],t[1]-b[1]]))))};
+CMDS.COPY=async()=>{const ss=await getSel();chosen.clear();ss.forEach(e=>chosen.add(e.id));const b=await need({kind:'point',prompt:'基点'});
+  for(;;){const t=await need({kind:'point',prompt:'複写先（Enter＝終わり）',base:b,allowEnd:true,rubber:q=>ss.map(e=>xform(e,tr([q[0]-b[0],q[1]-b[1]])))});
+    if(t==='END')return;addEnts(ss.map(e=>{const{id,...r}=xform(e,tr([t[0]-b[0],t[1]-b[1]]));return r}))}};
+CMDS.ROTATE=async()=>{const ss=await getSel();chosen.clear();ss.forEach(e=>chosen.add(e.id));const b=await need({kind:'point',prompt:'基点'});
+  const ang=q=>Math.atan2(q[1]-b[1],q[0]-b[0]);
+  const v=await need({kind:'pointOrNumber',prompt:'回転角度（度・左回りが＋）',base:b,rubber:q=>ss.map(e=>xform(e,rotF(b,ang(q)),ang(q)*180/Math.PI))});
+  const a=Array.isArray(v)?ang(v):v*Math.PI/180;replaceEnts(ss.map(e=>xform(e,rotF(b,a),a*180/Math.PI)))};
+let lastOff=0;
+function offsetEnt(e,d,side){ // side：どちら側か示す点
+  if(e.t==='C'){const r=Math.hypot(side[0]-e.x,side[1]-e.y)<e.r?e.r-d:e.r+d;return r>0?{...e,r}:null}
+  if(e.t!=='L'&&e.t!=='PL')return null;
+  const p=e.t==='L'?[e.a,e.b]:e.pts,cl=e.t==='PL'&&e.closed,n=p.length;
+  // 一番近い区間で左右を決め、各区間を平行にずらして隣どうしの交点でつなぐ
+  let bi=0,bd=Infinity;for(let i=1;i<(cl?n+1:n);i++){const d0=segD(side,p[i-1],p[i%n]);if(d0<bd){bd=d0;bi=i}}
+  const A=p[bi-1],B=p[bi%n],sg=Math.sign((B[0]-A[0])*(side[1]-A[1])-(B[1]-A[1])*(side[0]-A[0]))||1;
+  const sh=[];for(let i=1;i<(cl?n+1:n);i++){const a=p[i-1],b=p[i%n],L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,o=[-(b[1]-a[1])/L*d*sg,(b[0]-a[0])/L*d*sg];sh.push([[a[0]+o[0],a[1]+o[1]],[b[0]+o[0],b[1]+o[1]]])}
+  const q=[];const m=sh.length;
+  for(let i=0;i<(cl?m:m+1);i++){
+    if(!cl&&i===0){q.push(sh[0][0]);continue}if(!cl&&i===m){q.push(sh[m-1][1]);continue}
+    const s1=sh[(i-1+m)%m],s2=sh[i%m],x=segX(s1[0],s1[1],s2[0],s2[1],true);q.push(x||s2[0])}
+  if(e.t==='L')return{...e,a:q[0],b:q[1]};
+  return{...e,pts:q}}
+CMDS.OFFSET=async()=>{const v=await need({kind:'pointOrNumber',prompt:`オフセット距離 <${lastOff?fmtLen(lastOff):'なし'}>`,allowEnd:!!lastOff});
+  let d=v==='END'?lastOff:v;if(Array.isArray(d)){const b=await need({kind:'point',prompt:'2点目',base:d});d=Math.hypot(b[0]-d[0],b[1]-d[1])}if(!(d>0))return;lastOff=d;chosen.clear();
+  for(;;){const id=await need({kind:'select',prompt:'ずらす図形を1つクリック（Enter＝終わり）',one:true});if(!id.length)return;
+    const e=doc.ents.find(x=>x.id===id[0]);chosen.clear();chosen.add(e.id);render();
+    const s=await need({kind:'point',prompt:'ずらす側の点',rubber:q=>[offsetEnt(e,d,q)]});const o=offsetEnt(e,d,s);chosen.clear();
+    if(o){const{id:_,...r}=o;addEnts([r])}else log('  この図形はずらせません（線・ポリライン・円のみ）')}};
+CMDS.ERASE=async()=>{const ss=await getSel();const ids=new Set(ss.map(e=>e.id));commit(()=>{doc.ents=doc.ents.filter(e=>!ids.has(e.id))});chosen.clear();log(`  ${ss.length}個 削除しました`)};
+CMDS.DIST=async()=>{const a=await need({kind:'point',prompt:'1点目'});const b=await need({kind:'point',prompt:'2点目',base:a,rubber:q=>[{t:'L',a,b:q}]});
+  const L=Math.hypot(b[0]-a[0],b[1]-a[1]),A=cadToSurv(a),B=cadToSurv(b),dX=B.X-A.X,dY=B.Y-A.Y;
+  log(`  距離 ${fmtLen(L)}（図面 ${L.toFixed(3)}）　ΔX=${dX.toFixed(3)}  ΔY=${dY.toFixed(3)}　方向角 ${dms(Math.atan2(dY,dX)*180/Math.PI)}`)};
+CMDS.ID=async()=>{for(;;){const p=await need({kind:'point',prompt:'調べる点（Enter＝終わり）',allowEnd:true});if(p==='END')return;const q=cadToSurv(p);
+  log(`  測量 X=${q.X.toFixed(3)}  Y=${q.Y.toFixed(3)}　（図面 x=${p[0].toFixed(3)}  y=${p[1].toFixed(3)}）`)}};
+function describe(e){const sv=p=>{const q=cadToSurv(p);return `X=${q.X.toFixed(3)} Y=${q.Y.toFixed(3)}`};
+  switch(e.t){case 'P':return `点 ${sv([e.x,e.y])}`;case 'C':return `円 中心 ${sv([e.x,e.y])} 半径 ${fmtLen(e.r)}`;case 'T':return `文字「${e.s}」 ${sv([e.x,e.y])}`;
+    case 'L':return `線 ${sv(e.a)} → ${sv(e.b)} 長さ ${fmtLen(Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1]))}`;
+    case 'PL':{let L=0;const p=plPts(e);for(let i=1;i<p.length;i++)L+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return `ポリライン ${e.pts.length}点${e.closed?'（閉）':''} 長さ ${fmtLen(L)}`}
+    case 'D':return `寸法 ${e.s}`}return e.t}
+CMDS.LIST=async()=>{const ss=await getSel();ss.slice(0,50).forEach(e=>log(`  [${e.ly}] ${describe(e)}`));if(ss.length>50)log(`  ほか ${ss.length-50}個`)};
+CMDS.ZOOM=async a=>{let v=a[0]?hankaku(a[0]).toUpperCase():await need({kind:'point',prompt:'窓の1点目（E＝全体）',keys:['E','A']});
+  if(v==='E'||v==='A')return fit();if(!Array.isArray(v))return;
+  const p=v,q=await need({kind:'point',prompt:'もう1点',rubber:r=>[{t:'PL',pts:[p,[r[0],p[1]],r,[p[0],r[1]]],closed:true}]});
+  zoomTo({x0:Math.min(p[0],q[0]),x1:Math.max(p[0],q[0]),y0:Math.min(p[1],q[1]),y1:Math.max(p[1],q[1])})};
+CMDS.ZOOMEXT=async()=>fit();
+CMDS.UNDO=async()=>{if(!undoS.length)return log('  これ以上戻せません');redoS.push(snapDoc());loadDoc(undoS.pop())};
+CMDS.REDO=async()=>{if(!redoS.length)return log('  やり直すものがありません');undoS.push(snapDoc());loadDoc(redoS.pop())};
+CMDS.LAYER=async a=>{const n=a.join(' ');if(n)newLayer(n);else log('  右の「画層」で 表示・ロック・色・現在の画層（○）を変えます')};
+CMDS.REBUILD=async()=>{if(edited&&!confirm('手で直した分を捨てて、①②から図を作り直しますか？'))return;undoS.push(snapDoc());edited=false;showEdited();refresh(true)};
+CMDS.DXF=async()=>$('btnDxf').click();
+CMDS.HELP=async()=>log(['  L 線　PL ポリライン　C 円　PO 点　T 文字　DAL 寸法',
+  '  M 移動　CO 複写　RO 回転　O オフセット　E 削除（Delete）',
+  '  DI 距離・方向角　ID 座標を調べる　LI 一覧　Z ズーム（Z E＝全体）',
+  '  U 元に戻す（Ctrl+Z）　REDO やり直し（Ctrl+Y）　LA 名前＝画層を作る　DXF 保存　REBUILD 作り直す',
+  '  F3 スナップ　F7 グリッド　F8 直交　Esc 中止　Enter・スペース・右クリック＝決定／前のコマンドをもう一度'].join('\n'));
+
+// ---- マウス・指 ----
+let pd=null,pan=null,lastMid=0;const touches=new Map();let pinch=null;
+function sp(e){const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+function zoomAt(p,f){const w=toW(...p);V.s*=f;const w2=toW(...p);V.cx+=w[0]-w2[0];V.cy+=w[1]-w2[1];render()}
+cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(sp(e),e.deltaY<0?1.2:1/1.2)},{passive:false});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const p=sp(e);
+  if(e.pointerType==='touch'){touches.set(e.pointerId,p);if(touches.size===2){const[a,b]=[...touches.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),m:[(a[0]+b[0])/2,(a[1]+b[1])/2]};pd=null}else pd={p,touch:true,moved:false};return}
+  if(document.activeElement!==cmdEl&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#props')))cmdEl.focus({preventScroll:true});
+  if(e.button===1){e.preventDefault();if(Date.now()-lastMid<350){fit();lastMid=0;return}lastMid=Date.now();pan={p};return}
+  if(e.button===2){pan={p,right:true,moved:false};return}
+  if(e.button===0)pd={p,moved:false}});
+cv.addEventListener('pointermove',e=>{const p=sp(e);
+  if(e.pointerType==='touch'){if(!touches.has(e.pointerId))return;touches.set(e.pointerId,p);
+    if(pinch&&touches.size===2){const[a,b]=[...touches.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]),m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+      V.cx-=(m[0]-pinch.m[0])/V.s;V.cy+=(m[1]-pinch.m[1])/V.s;zoomAt(m,d/pinch.d);pinch={d,m};return}
+    if(pd&&pd.touch){if(Math.hypot(p[0]-pd.p[0],p[1]-pd.p[1])>8)pd.moved=true;if(pd.moved){V.cx-=(p[0]-pd.p[0])/V.s;V.cy+=(p[1]-pd.p[1])/V.s;pd.p=p;render()}}
+    mouse=p;return}
+  mouse=p;
+  if(pan){if(Math.hypot(p[0]-pan.p[0],p[1]-pan.p[1])>3)pan.moved=true;V.cx-=(p[0]-pan.p[0])/V.s;V.cy+=(p[1]-pan.p[1])/V.s;pan.p=p;render();return}
+  if(pd&&!pd.moved&&Math.hypot(p[0]-pd.p[0],p[1]-pd.p[1])>5){pd.moved=true;if(!wantsPoint()&&!box&&!gripAt(pd.p))box={x:pd.p[0],y:pd.p[1],drag:true}}
+  snap=wantsPoint()?findSnap(p):null;
+  hover=!pending&&!box?hitAt(toW(...p)):null;
+  render()});
+cv.addEventListener('pointerup',e=>{const p=sp(e);
+  if(e.pointerType==='touch'){touches.delete(e.pointerId);if(pinch){if(touches.size<2)pinch=null;pd=null;return}
+    if(pd&&!pd.moved){mouse=p;snap=wantsPoint()?findSnap(p):null;click(p,e)}pd=null;mouse=null;render();return}
+  if(pan){const r=pan;pan=null;if(r.right&&!r.moved)submit('');return}
+  if(e.button!==0||!pd)return;const d=pd;pd=null;
+  if(box&&box.drag){finishBox(p,e);return}
+  if(!d.moved)click(p,e)});
+cv.addEventListener('pointerleave',()=>{mouse=null;snap=null;hover=null;render()});
+cv.addEventListener('dblclick',e=>{if(pending)return;const w=toW(...sp(e)),h=hitAt(w);
+  if(!h)return fit();chosen.clear();chosen.add(h.id);updProps();render();const t=$('props').querySelector('[data-k="s"]');if(t){t.focus();t.select()}});
+function gripAt(p){if(pending||!chosen.size||chosen.size>200)return null;
+  for(const e of doc.ents)if(chosen.has(e.id)&&usable(e))for(const g of gripsOf(e)){const q=toS(g.p);if(Math.hypot(q[0]-p[0],q[1]-p[1])<7)return{e,g}}return null}
+function click(p,ev){
+  if(wantsPoint())return resolveP(curPoint());
+  if(box){finishBox(p,ev);return}
+  const gr=gripAt(p);
+  if(gr){run('GRIP',async()=>{const{e,g}=gr;const q=await need({kind:'point',prompt:'グリップの移動先',base:g.p,rubber:r=>[g.f(e,r)]});replaceEnts([{...g.f(e,q),id:e.id}])});return}
+  const h=hitAt(toW(...p));
+  if(h){if(ev.shiftKey)chosen.delete(h.id);else chosen.add(h.id);
+    if(pending&&pending.one)return resolveP([h.id]);updProps();render();return}
+  if(pending&&pending.one)return;
+  box={x:p[0],y:p[1],drag:false};render()}
+function finishBox(p,ev){const b=box;box=null;const a=toW(b.x,b.y),c=toW(...p),r={x0:Math.min(a[0],c[0]),x1:Math.max(a[0],c[0]),y0:Math.min(a[1],c[1]),y1:Math.max(a[1],c[1])},cross=p[0]<b.x;
+  doc.ents.forEach(e=>{if(usable(e)&&inBox(e,r,cross)){if(ev.shiftKey)chosen.delete(e.id);else chosen.add(e.id)}});updProps();render()}
+$('cad').addEventListener('pointerenter',()=>overCad=true);$('cad').addEventListener('pointerleave',()=>overCad=false);
+document.addEventListener('keydown',e=>{
+  const t=e.target,typing=(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')&&t!==cmdEl;
+  if(!(overCad||t===cmdEl))return;
+  if(e.key==='F3'||e.key==='F7'||e.key==='F8'){e.preventDefault();toggle({F3:'osnap',F7:'grid',F8:'ortho'}[e.key]);return}
+  if(typing)return;
+  if(e.key==='Escape'){e.preventDefault();cmdEl.value='';cancel();return}
+  if((e.ctrlKey||e.metaKey)&&!e.altKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();run('UNDO')}else if(k==='y'){e.preventDefault();run('REDO')}else if(k==='a'&&!pending&&t!==cmdEl){e.preventDefault();doc.ents.forEach(x=>usable(x)&&chosen.add(x.id));updProps();render()}return}
+  if(e.key==='Delete'&&!pending&&chosen.size&&!cmdEl.value){e.preventDefault();run('ERASE');return}
+  if(t!==cmdEl&&e.key.length===1&&!e.altKey)cmdEl.focus({preventScroll:true})});
+function toggle(k){tog[k]=!tog[k];document.querySelectorAll('.stat [data-t]').forEach(b=>b.classList.toggle('on',tog[b.dataset.t]));
+  log(`  ${{osnap:'スナップ',ortho:'直交',grid:'グリッド'}[k]} ${tog[k]?'ON':'OFF'}`);render()}
+document.querySelectorAll('.stat [data-t]').forEach(b=>{b.classList.toggle('on',tog[b.dataset.t]);b.onclick=()=>toggle(b.dataset.t)});
+document.querySelectorAll('#tb [data-cmd]').forEach(b=>b.onclick=()=>{log('コマンド: '+b.dataset.cmd);run(b.dataset.cmd);cmdEl.focus({preventScroll:true})});
+$('btnFull').onclick=()=>{const c=$('cadCard'),f=c.classList.toggle('full');$('btnFull').textContent=f?'元の大きさ':'大きく';document.body.style.overflow=f?'hidden':''};
+
+// ---- 画層とプロパティ ----
+function newLayer(n){n=(n||'').trim();if(!n)return;if(doc.layers[n]){doc.cur=n;updLayers();return}
+  commit(()=>{doc.layers[n]={c:7,on:true,lock:false,user:true};doc.cur=n});log(`  画層「${n}」を作り、現在の画層にしました`)}
+$('btnNewLy').onclick=()=>newLayer(prompt('新しい画層の名前'));
+function updLayers(){const cnt={};doc.ents.forEach(e=>cnt[e.ly]=(cnt[e.ly]||0)+1);
+  const t=$('layTbl');
+  t.innerHTML='<tr><th title="現在の画層：新しく描く図形が入る">現</th><th>名前</th><th>表示</th><th>ロック</th><th>色</th><th>数</th></tr>'+
+    Object.entries(doc.layers).map(([n,l])=>`<tr class="${n===doc.cur?'cur':''}" data-n="${esc(n)}"><td><input type="radio" name="curLy" ${n===doc.cur?'checked':''}></td><td class="ln" title="${esc(n)}（クリックでこの画層の図形を選ぶ）">${esc(n)}</td>`+
+      `<td><input type="checkbox" data-a="on" ${l.on?'checked':''}></td><td><input type="checkbox" data-a="lock" ${l.lock?'checked':''}></td>`+
+      `<td><select data-a="c" style="color:${ACI[l.c]}">${Object.keys(ACINAME).map(c=>`<option value="${c}" ${+c===l.c?'selected':''} style="color:${ACI[c]};background:#1d232c">■${ACINAME[c]}</option>`).join('')}</select></td><td>${cnt[n]||0}</td></tr>`).join('');
+  t.querySelectorAll('tr[data-n]').forEach(tr=>{const n=tr.dataset.n,l=doc.layers[n];
+    tr.querySelector('input[type=radio]').onchange=()=>{doc.cur=n;updLayers()};
+    tr.querySelector('.ln').onclick=()=>{chosen.clear();doc.ents.forEach(e=>e.ly===n&&usable(e)&&chosen.add(e.id));updProps();render()};
+    tr.querySelectorAll('[data-a]').forEach(i=>i.onchange=()=>{const a=i.dataset.a;l[a]=a==='c'?+i.value:i.checked;
+      if(a!=='c')for(const e of doc.ents)if(e.ly===n&&!usable(e))chosen.delete(e.id);updLayers();updProps();render()})})}
+function updProps(){const el=$('props'),ss=doc.ents.filter(e=>chosen.has(e.id));
+  if(!ss.length){el.innerHTML=`<div class="pk">選んでいません</div><div style="color:#8b96a8">図形をクリックするか囲むと、中身が出ます。<br>現在の画層：${esc(doc.cur)}</div>`;return}
+  const lyOpts=v=>Object.keys(doc.layers).map(n=>`<option${n===v?' selected':''}>${esc(n)}</option>`).join('');
+  const row=(k,v)=>`<tr><td>${k}</td><td>${v}</td></tr>`,inp=(k,v)=>`<input data-k="${k}" value="${typeof v==='number'?+v.toFixed(4):esc(v)}">`;
+  const sv=p=>{const q=cadToSurv(p);return `X=${q.X.toFixed(3)}<br>Y=${q.Y.toFixed(3)}`};
+  let h='';
+  if(ss.length>1){const c={};ss.forEach(e=>c[TYPENAME[e.t]]=(c[TYPENAME[e.t]]||0)+1);const same=ss.every(e=>e.ly===ss[0].ly);
+    h=`<div class="pk">${ss.length}個 選択中</div><div>${Object.entries(c).map(([k,v])=>k+' '+v).join('・')}</div><table>`+row('画層',`<select data-k="ly">${same?'':'<option selected value="">（いろいろ）</option>'}${lyOpts(same?ss[0].ly:'')}</select>`)+'</table>'}
+  else{const e=ss[0];h=`<div class="pk">${TYPENAME[e.t]}</div><table>`+row('画層',`<select data-k="ly">${lyOpts(e.ly)}</select>`);
+    if('x' in e)h+=row('x',inp('x',e.x))+row('y',inp('y',e.y))+row('測量',sv([e.x,e.y]));
+    if(e.t==='C')h+=row('半径',inp('r',e.r))+row('',fmtLen(e.r));
+    if(e.t==='T')h+=row('文字',inp('s',e.s))+row('高さ',inp('h',e.h))+row('角度',inp('rot',e.rot||0));
+    if(e.t==='L'){const L=Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1]);h+=row('始点',sv(e.a))+row('終点',sv(e.b))+row('長さ',fmtLen(L))}
+    if(e.t==='PL'){let L=0;const p=plPts(e);for(let i=1;i<p.length;i++)L+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);h+=row('頂点',e.pts.length)+row('長さ',fmtLen(L))+row('閉じる',`<input type="checkbox" data-k="closed" ${e.closed?'checked':''}>`)}
+    if(e.t==='D')h+=row('寸法値',inp('s',e.s))+row('実長',fmtLen(Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1])));
+    h+='</table>'}
+  el.innerHTML=h;
+  el.querySelectorAll('[data-k]').forEach(i=>i.addEventListener('change',()=>{const k=i.dataset.k;let v=i.type==='checkbox'?i.checked:i.value;
+    if(['x','y','r','h','rot'].includes(k)){v=parseLen(v);if(isNaN(v))return updProps()}
+    if(k==='ly'&&!doc.layers[v])return;
+    commit(()=>{doc.ents=doc.ents.map(e=>chosen.has(e.id)?{...e,[k]:v,...(k==='s'&&e.t==='D'?{meas:false}:{})}:e)});
+    for(const e of doc.ents)if(chosen.has(e.id)&&!usable(e))chosen.delete(e.id);updProps()}))}
 
 let cur=null;
-function refresh(){
+function refresh(force){
   const r=parse($('src').value);
   const pm=$('parseMsg');pm.textContent=r.msg;pm.className='msg'+(r.bad?' ng':r.pts.length?' ok':'');
   if($('autoScale').checked&&r.pts.length)sel.value=autoScale(r.pts);
   sel.disabled=$('autoScale').checked;
   const s=settings();const b=build(r.pts,s);cur={r,s,b};
-  draw(b,r.pts);
+  // 図面：手で直していなければ作り直す。貼り付けが変わったら全体を表示
+  const key=$('src').value;
+  if(!edited){setDoc(b,s);if(!force)undoS.length=0;redoS.length=0;if(key!==srcKey)needFit=true;srcKey=key;updLayers();updProps();render()}
   // 一覧
   const t=$('list');
   const hasD=r.pts.some(p=>p.d!=null);
@@ -403,14 +876,15 @@ const FRAMED_MSG='OneDrive などの Web 画面の中で開いているため、
 if(framed)out(FRAMED_MSG,false);
 $('btnDxf').onclick=()=>{
   if(framed)return out(FRAMED_MSG,false);
-  if(!cur||!cur.b.ents.length)return out('座標が読み込まれていません',false);
-  const blob=new Blob([toDxf(cur.b.ents)],{type:'application/dxf'});
+  if(!doc.ents.length)return out('図面に何もありません',false);
+  const blob=new Blob([toDxf(doc.ents,doc.layers)],{type:'application/dxf'});
   const a=document.createElement('a');const d=new Date();
   a.download=`座標_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.dxf`;
   a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   out('DXFを保存しました（ダウンロードフォルダ）。',true);
 };
 refresh();
+log('コマンド欄に L（線）・C（円）・M（移動）などを打つか、上のボタンを押します。HELP で一覧。');
 </script>
 </body>
 </html>
