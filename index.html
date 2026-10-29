@@ -47,9 +47,19 @@ button:hover{filter:brightness(1.08)}
 .cvwrap{position:relative;flex:1;min-width:0;background:#fff}
 #cv{position:absolute;inset:0;width:100%;height:100%;cursor:none;touch-action:none;display:block}
 #dyn{position:absolute;pointer-events:none;background:rgba(20,26,34,.88);border:1px solid #4a5466;color:#fff;padding:1px 6px;border-radius:3px;font:11px Consolas,monospace;white-space:nowrap;display:none}
-.side{width:250px;flex:0 0 250px;border-left:1px solid #11161c;overflow:auto;background:#262d37}
-.side h3{margin:0;padding:4px 8px;font-size:12px;background:#2f3743;border-bottom:1px solid #11161c;display:flex;justify-content:space-between;align-items:center}
-.side h3 button{background:#3a4352;color:#e6ebf2;padding:1px 6px;font-size:11px}
+/* パレット（画層・プロパティ）：左右の端にくっつける（ドッキング）か、図面の上に浮かせる（フローティング） */
+.dock{width:250px;flex:0 0 250px;overflow:auto;background:#262d37;display:flex;flex-direction:column}
+.dock[hidden]{display:none}
+#dockL{border-right:1px solid #11161c}#dockR{border-left:1px solid #11161c}
+.pal{display:flex;flex-direction:column;background:#262d37;min-height:0}
+.pal[hidden]{display:none}
+.dock .pal{border-bottom:1px solid #11161c;flex:0 0 auto}
+.palh{display:flex;justify-content:space-between;align-items:center;gap:4px;padding:3px 5px 3px 8px;background:#2f3743;border-bottom:1px solid #11161c;font-size:12px;font-weight:bold;cursor:move;user-select:none;touch-action:none;white-space:nowrap}
+.palbtns{display:flex;gap:2px}
+.palh button{background:#3a4352;color:#e6ebf2;padding:0 6px;font-size:12px;line-height:18px;border-radius:3px}
+.pal.float{position:absolute;z-index:5;width:270px;max-height:calc(100% - 8px);border:1px solid #4a5466;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.45);resize:both;overflow:hidden;min-width:200px;min-height:90px;cursor:default}
+.pal.float .palb{overflow:auto;flex:1}
+#dockHint{position:absolute;top:0;bottom:0;width:70px;background:rgba(29,111,209,.22);border:2px dashed #1d6fd1;display:none;z-index:6;pointer-events:none}
 #layTbl{width:100%;border-collapse:collapse}
 #layTbl th{font-weight:normal;color:#8b96a8;font-size:11px;text-align:left;padding:2px 3px}
 #layTbl td{padding:2px 3px;border-bottom:1px solid #313946;white-space:nowrap}
@@ -57,12 +67,6 @@ button:hover{filter:brightness(1.08)}
 #layTbl tr.cur td{background:#33425a}
 #layTbl select{background:#1d232c;border:1px solid #4a5466;padding:0 2px;font-size:11px;width:auto}
 #props{padding:6px 8px;line-height:1.5}
-/* プロパティの小窓（AutoCAD の Ctrl+1 のように図面の上に浮かぶ・つかんで動かす・右下で大きさを変える） */
-#propWin{position:absolute;right:12px;top:12px;width:270px;max-height:calc(100% - 24px);display:flex;flex-direction:column;background:#262d37;border:1px solid #4a5466;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.55);z-index:5;resize:both;overflow:hidden;min-width:210px;min-height:120px;cursor:default}
-#propWin[hidden],.side h3[hidden]{display:none}
-.pwh{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:#2f3743;border-bottom:1px solid #11161c;cursor:move;user-select:none;font-weight:bold;touch-action:none}
-.pwh button{background:transparent;color:#cfd6e2;padding:0 6px;font-size:14px}
-.pwb{overflow:auto;flex:1}
 #props .sec{color:#8b96a8;font-size:11px;border-bottom:1px solid #3a4352;margin:6px 0 2px}
 #props .pk{font-weight:bold;color:#fff;margin-bottom:4px}
 #props table{width:100%;border-collapse:collapse}
@@ -78,8 +82,8 @@ button:hover{filter:brightness(1.08)}
 .stat button{background:transparent;color:#8b96a8;padding:1px 7px;font-size:11px;border:1px solid #4a5466;border-radius:3px}
 .stat button.on{color:#fff;background:#1d6fd1;border-color:#1d6fd1}
 #coord{font:12px Consolas,monospace;color:#cfd6e2;margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media(max-width:900px){.cadmain{flex-direction:column;height:auto}.cvwrap{height:400px;flex:none}.side{width:auto;flex:none;border-left:0;border-top:1px solid #11161c;max-height:280px}
-  .full .cadmain{min-height:0}.full .cvwrap{flex:1;height:auto;min-height:200px}.full .side{max-height:30vh}}
+@media(max-width:900px){.cadmain{flex-direction:column;height:auto}.cvwrap{height:400px;flex:none}.dock{width:auto;flex:none;border:0!important;border-top:1px solid #11161c!important;max-height:280px}
+  .full .cadmain{min-height:0}.full .cvwrap{flex:1;height:auto;min-height:200px}.full .dock{max-height:30vh}}
 table.list{border-collapse:collapse;width:100%;font-size:12px}
 table.list th,table.list td{border:1px solid var(--line);padding:2px 6px;text-align:right}
 table.list th{background:#eef2f7;text-align:center}
@@ -161,18 +165,15 @@ table.list td:nth-child(2){text-align:left}
         <span class="sep"></span>
         <button data-cmd="DIST" title="DIST（DI）">距離</button><button data-cmd="ID" title="ID：座標を調べる">座標</button><button data-cmd="LIST" title="LIST（LI）">一覧</button>
         <span class="sep"></span>
-        <button data-cmd="UNDO" title="Ctrl+Z">元に戻す</button><button data-cmd="REDO" title="Ctrl+Y">やり直し</button><button data-cmd="ZOOMEXT" title="ZOOM E・ダブルクリック">全体</button><button id="btnFull" title="図面をこのページいっぱいに広げる">全画面</button><button id="btnWin" title="図面を新しいウィンドウに出す（2画面目にも置ける）">別窓で出す</button><button id="btnProp" title="プロパティを動かせる小窓で出す（Ctrl+1）">プロパティ</button>
+        <button data-cmd="UNDO" title="Ctrl+Z">元に戻す</button><button data-cmd="REDO" title="Ctrl+Y">やり直し</button><button data-cmd="ZOOMEXT" title="ZOOM E・ダブルクリック">全体</button><button id="btnFull" title="図面をこのページいっぱいに広げる">全画面</button><button id="btnWin" title="図面を新しいウィンドウに出す（2画面目にも置ける）">別窓で出す</button><button id="btnLay" title="画層パレットを出す／しまう（LA）">画層</button><button id="btnProp" title="プロパティパレットを出す／しまう（Ctrl+1）">プロパティ</button>
         <span id="editBar">手で直した図です（①②を変えても図は変わりません）<button data-cmd="REBUILD">作り直す</button></span>
       </div>
       <div class="cadmain">
-        <div class="cvwrap"><canvas id="cv"></canvas><div id="dyn"></div>
-          <div id="propWin" hidden><div class="pwh" title="ここをつかんで動かす"><span>プロパティ</span><button type="button" id="pwClose" title="閉じる（右の欄に戻す）">×</button></div><div class="pwb"></div></div>
-        </div>
-        <div class="side">
-          <h3>画層<button id="btnNewLy" title="新しい画層を作る">＋</button></h3>
-          <table id="layTbl"></table>
-          <h3 id="sideProp">プロパティ</h3>
-          <div id="props"></div>
+        <div class="dock" id="dockL" hidden></div>
+        <div class="cvwrap"><canvas id="cv"></canvas><div id="dyn"></div><div id="dockHint"></div></div>
+        <div class="dock" id="dockR">
+          <div class="pal" id="palLay"><div class="palh" title="つかんで動かす（左右の端へ持っていくとくっつく）"><span>画層</span><span class="palbtns"><button type="button" id="btnNewLy" title="新しい画層を作る">＋</button><button type="button" data-pa="float" title="浮かせる">⇱</button><button type="button" data-pa="close" title="しまう（上の「画層」ボタンで出す）">×</button></span></div><div class="palb"><table id="layTbl"></table></div></div>
+          <div class="pal" id="palProp"><div class="palh" title="つかんで動かす（左右の端へ持っていくとくっつく）"><span>プロパティ</span><span class="palbtns"><button type="button" data-pa="float" title="浮かせる">⇱</button><button type="button" data-pa="close" title="しまう（上の「プロパティ」ボタン・Ctrl+1 で出す）">×</button></span></div><div class="palb"><div id="props"></div></div></div>
         </div>
       </div>
       <div id="hist"></div>
@@ -752,7 +753,7 @@ CMDS.ZOOM=async a=>{let v=a[0]?hankaku(a[0]).toUpperCase():await need({kind:'poi
 CMDS.ZOOMEXT=async()=>fit();
 CMDS.UNDO=async()=>{if(!undoS.length)return log('  これ以上戻せません');redoS.push(snapDoc());loadDoc(undoS.pop())};
 CMDS.REDO=async()=>{if(!redoS.length)return log('  やり直すものがありません');undoS.push(snapDoc());loadDoc(redoS.pop())};
-CMDS.LAYER=async a=>{const n=a.join(' ');if(n)newLayer(n);else log('  右の「画層」で 表示・ロック・色・現在の画層（○）を変えます')};
+CMDS.LAYER=async a=>{const n=a.join(' ');if(n)newLayer(n);else{showPal('lay',true);log('  画層パレットで 表示・ロック・色・現在の画層（○）を変えます')}};
 CMDS.REBUILD=async()=>{if(edited&&!W().confirm('手で直した分を捨てて、①②から図を作り直しますか？'))return;undoS.push(snapDoc());edited=false;showEdited();refresh(true)};
 CMDS.DXF=async()=>$('btnDxf').click();
 CMDS.PROPERTIES=async()=>showPropWin(true);ALIAS.PR=ALIAS.PROPS=ALIAS.CH='PROPERTIES';
@@ -861,18 +862,49 @@ window.addEventListener('pagehide',()=>{if(popup&&!popup.closed)popup.close()});
 function newLayer(n){n=(n||'').trim();if(!n)return;if(doc.layers[n]){doc.cur=n;updLayers();return}
   commit(()=>{doc.layers[n]={c:7,on:true,lock:false,user:true};doc.cur=n});log(`  画層「${n}」を作り、現在の画層にしました`)}
 $('btnNewLy').onclick=()=>newLayer(W().prompt('新しい画層の名前'));
-// プロパティの小窓：#props を小窓へ移す／右の欄へ戻す
-function showPropWin(on){const pw=$('propWin'),p=$('props');if(on===undefined)on=pw.hidden;
-  if(on){pw.querySelector('.pwb').appendChild(p);pw.hidden=false;$('sideProp').hidden=true}
-  else{$('sideProp').after(p);pw.hidden=true;$('sideProp').hidden=false}
-  $('btnProp').classList.toggle('on',on)}
-$('btnProp').onclick=()=>showPropWin();
-$('pwClose').onclick=()=>showPropWin(false);
-(()=>{const pw=$('propWin'),hd=pw.querySelector('.pwh');let d=null;
-  hd.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;hd.setPointerCapture(e.pointerId);d={x:e.clientX,y:e.clientY,l:pw.offsetLeft,t:pw.offsetTop}});
-  hd.addEventListener('pointermove',e=>{if(!d)return;const P=pw.parentElement;
-    pw.style.left=Math.max(0,Math.min(P.clientWidth-60,d.l+e.clientX-d.x))+'px';pw.style.top=Math.max(0,Math.min(P.clientHeight-30,d.t+e.clientY-d.y))+'px';pw.style.right='auto'});
-  hd.addEventListener('pointerup',()=>d=null)})();
+// ---- パレット（画層・プロパティ）----
+// side：L＝左にくっつける／R＝右にくっつける／F＝図面の上に浮かせる（x,y,w,h）。並びと場所はブラウザが覚える
+const PALS={lay:'palLay',prop:'palProp'},PALBTN={lay:'btnLay',prop:'btnProp'};
+let palState={lay:{side:'R'},prop:{side:'R'}};
+try{const o=JSON.parse(localStorage.getItem('zahyou_cad_pal')||'null');if(o&&o.lay&&o.prop)palState=o}catch(e){}
+const savePal=()=>{try{localStorage.setItem('zahyou_cad_pal',JSON.stringify(palState))}catch(e){}};
+function placePal(k){const s=palState[k],p=$(PALS[k]),wrap=cv.parentElement;p.hidden=!!s.hidden;
+  if(s.side==='F'){p.classList.add('float');if(p.parentElement!==wrap)wrap.appendChild(p);
+    const W0=wrap.clientWidth||600,H0=wrap.clientHeight||400,w=Math.min(s.w||270,W0);
+    if(s.x==null){s.x=Math.max(0,W0-w-10-(k==='lay'?w+10:0));s.y=10}
+    s.x=Math.max(0,Math.min(s.x,W0-60));s.y=Math.max(0,Math.min(s.y,H0-30));
+    Object.assign(p.style,{left:s.x+'px',top:s.y+'px',width:w+'px',height:s.h?Math.min(s.h,H0-8)+'px':''})}
+  else{p.classList.remove('float');p.style.cssText='';const d=$(s.side==='L'?'dockL':'dockR');
+    // 同じ側では 画層 → プロパティ の順に並べる
+    if(k==='lay')d.prepend(p);else d.append(p)}
+  const b=p.querySelector('[data-pa="float"]');b.textContent=s.side==='F'?'⇲':'⇱';b.title=s.side==='F'?'元の端にくっつける':'浮かせる';
+  ['dockL','dockR'].forEach(id=>{const d=$(id);d.hidden=![...d.querySelectorAll('.pal')].some(x=>!x.hidden)});
+  $(PALBTN[k]).classList.toggle('on',!s.hidden)}
+function showPal(k,on){palState[k].hidden=on===undefined?!palState[k].hidden:!on;placePal(k);savePal()}
+const showPropWin=on=>showPal('prop',on);
+function floatPal(k){const s=palState[k];if(s.side==='F'){s.side=s.home||'R'}else{s.home=s.side;s.side='F';s.x=null}placePal(k);savePal()}
+Object.keys(PALS).forEach(k=>{const p=$(PALS[k]),h=p.querySelector('.palh');let d=null;
+  $(PALBTN[k]).onclick=()=>showPal(k);
+  p.querySelector('[data-pa="float"]').onclick=()=>floatPal(k);
+  p.querySelector('[data-pa="close"]').onclick=()=>showPal(k,false);
+  h.addEventListener('dblclick',e=>{if(!e.target.closest('button'))floatPal(k)});
+  // 見出しをつかんで動かす。くっついていれば引きはがして浮かせ、左右の端へ持っていけばくっつける
+  h.addEventListener('pointerdown',e=>{if(e.target.closest('button')||e.button!==0)return;try{h.setPointerCapture(e.pointerId)}catch(_){}
+    const r=p.getBoundingClientRect();d={x:e.clientX,y:e.clientY,ox:e.clientX-r.left,oy:e.clientY-r.top,moved:false,side:null}});
+  h.addEventListener('pointermove',e=>{if(!d)return;if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<6)return;
+    const s=palState[k],wrap=cv.parentElement;
+    if(!d.moved){d.moved=true;if(s.side!=='F'){s.home=s.side;s.w=Math.max(p.offsetWidth,240);s.h=null;s.side='F';s.x=0;s.y=0;placePal(k);d.ox=Math.min(d.ox,p.offsetWidth-40)}}
+    const wr=wrap.getBoundingClientRect();
+    s.x=Math.max(0,Math.min(e.clientX-wr.left-d.ox,wr.width-60));s.y=Math.max(0,Math.min(e.clientY-wr.top-d.oy,wr.height-30));
+    p.style.left=s.x+'px';p.style.top=s.y+'px';
+    d.side=e.clientX<wr.left+40?'L':e.clientX>wr.right-40?'R':null;
+    const hint=$('dockHint');hint.style.display=d.side?'block':'none';hint.style.left=d.side==='L'?'0':'auto';hint.style.right=d.side==='R'?'0':'auto'});
+  const end=()=>{if(!d)return;const sd=d.moved&&d.side;d=null;$('dockHint').style.display='none';
+    if(sd){palState[k].side=sd;placePal(k)}savePal()};
+  h.addEventListener('pointerup',end);h.addEventListener('pointercancel',end);
+  // 浮かせているときの大きさ（右下でつまんで変える）を覚える
+  new ResizeObserver(()=>{const s=palState[k];if(s.side==='F'&&p.offsetWidth){s.w=p.offsetWidth;if(p.style.height)s.h=p.offsetHeight}}).observe(p)});
+Object.keys(PALS).forEach(placePal);
 function updLayers(){const cnt={};doc.ents.forEach(e=>cnt[e.ly]=(cnt[e.ly]||0)+1);
   const t=$('layTbl');
   t.innerHTML='<tr><th title="現在の画層：新しく描く図形が入る">現</th><th>名前</th><th>表示</th><th>ロック</th><th>色</th><th>数</th></tr>'+
