@@ -161,7 +161,7 @@ table.list td:nth-child(2){text-align:left}
         <span class="sep"></span>
         <button data-cmd="DIST" title="DIST（DI）">距離</button><button data-cmd="ID" title="ID：座標を調べる">座標</button><button data-cmd="LIST" title="LIST（LI）">一覧</button>
         <span class="sep"></span>
-        <button data-cmd="UNDO" title="Ctrl+Z">元に戻す</button><button data-cmd="REDO" title="Ctrl+Y">やり直し</button><button data-cmd="ZOOMEXT" title="ZOOM E・ダブルクリック">全体</button><button id="btnFull" title="作図画面を大きくする">大きく</button><button id="btnWin" title="図面を新しいウィンドウに出す（2画面目にも置ける）">別窓</button><button id="btnProp" title="プロパティを動かせる小窓で出す（Ctrl+1）">プロパティ</button>
+        <button data-cmd="UNDO" title="Ctrl+Z">元に戻す</button><button data-cmd="REDO" title="Ctrl+Y">やり直し</button><button data-cmd="ZOOMEXT" title="ZOOM E・ダブルクリック">全体</button><button id="btnFull" title="図面をこのページいっぱいに広げる">全画面</button><button id="btnWin" title="図面を新しいウィンドウに出す（2画面目にも置ける）">別窓で出す</button><button id="btnProp" title="プロパティを動かせる小窓で出す（Ctrl+1）">プロパティ</button>
         <span id="editBar">手で直した図です（①②を変えても図は変わりません）<button data-cmd="REBUILD">作り直す</button></span>
       </div>
       <div class="cadmain">
@@ -829,7 +829,7 @@ function setTheme(t){theme=t;try{localStorage.setItem('zahyou_cad_bg',t)}catch(e
 $('btnBg').onclick=()=>setTheme(theme==='white'?'black':'white');setTheme(theme);
 $('btnFull').onclick=()=>{
   if(popup&&!popup.closed){const d=popup.document;if(d.fullscreenElement)d.exitFullscreen();else d.documentElement.requestFullscreen().catch(()=>log('  全画面にできませんでした（F11 でも全画面になります）'));return}
-  const c=$('cadCard'),f=c.classList.toggle('full');$('btnFull').textContent=f?'元の大きさ':'大きく';document.body.style.overflow=f?'hidden':''};
+  const c=$('cadCard'),f=c.classList.toggle('full');$('btnFull').textContent=f?'全画面を戻す':'全画面';document.body.style.overflow=f?'hidden':''};
 
 // ---- 別窓：図面（#cad）をそのまま新しいウィンドウへ移す。閉じると元の場所へ戻る ----
 let cadHome=null;const cadEl=$('cad');
@@ -853,7 +853,7 @@ $('btnWin').onclick=()=>{
   rq=0;sizeCanvas();fit();cmdEl.focus();w.focus()};
 function backHome(){if(!cadHome)return;const cad=cadEl,h=cadHome;cadHome=null;
   h.replaceWith(document.adoptNode(cad));popup=null;rq=0;overCad=false;
-  $('btnWin').textContent='別窓';$('btnFull').textContent='大きく';$('btnFull').title='作図画面を大きくする';
+  $('btnWin').textContent='別窓で出す';$('btnFull').textContent='全画面';$('btnFull').title='図面をこのページいっぱいに広げる';
   sizeCanvas();render()}
 window.addEventListener('pagehide',()=>{if(popup&&!popup.closed)popup.close()});
 
