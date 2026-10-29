@@ -65,6 +65,7 @@ table.list td:nth-child(2){text-align:left}
       <tr><td>円の半径</td><td class="row"><input type="number" id="rad" value="1.0" step="0.1" min="0"><span class="note" style="flex:0;white-space:nowrap">mm（紙の上）</span></td></tr>
       <tr><td>文字の高さ</td><td class="row"><input type="number" id="th" value="2.5" step="0.5" min="0"><span class="note" style="flex:0;white-space:nowrap">mm（紙の上）</span></td></tr>
       <tr><td>描くもの</td><td>
+        <label class="ck"><input type="checkbox" id="dPoint" checked>点</label>
         <label class="ck"><input type="checkbox" id="dCircle" checked>円</label>
         <label class="ck"><input type="checkbox" id="dName" checked>点名</label>
         <label class="ck"><input type="checkbox" id="dCoord" checked>座標値</label>
@@ -88,6 +89,7 @@ table.list td:nth-child(2){text-align:left}
         <option value="one">X=-61786.610 Y=-29720.777（1行）</option>
       </select></td></tr>
       <tr><td>画層</td><td class="row">
+        <input type="text" id="lyPo" value="座標_ポイント" title="点の画層">
         <input type="text" id="lyPt" value="座標_点" title="円の画層">
         <input type="text" id="lyTx" value="座標_文字" title="点名・座標値の画層">
         <input type="text" id="lyLn" value="座標_線" title="線の画層">
@@ -95,7 +97,7 @@ table.list td:nth-child(2){text-align:left}
         <input type="text" id="lyTb" value="座標_表" title="座標表の画層">
       </td></tr>
     </table>
-    <div class="note">画層は左から 円／文字／線／寸法／表。無ければ自動で作られます。<br>「表にまとめる」では、点名・X・Y・点間距離（1つ前の点から）の表を図の右に描きます。<br>寸法線は「追加距離」の列があるときだけ出ます（隣の点との間に1本ずつ。左右は点の並び順に対して）。</div>
+    <div class="note">画層は左から 点／円／文字／線／寸法／表。点は座標の位置にそのまま置く CAD の「点」です。無ければ自動で作られます。<br>「表にまとめる」では、点名・X・Y・点間距離（1つ前の点から）の表を図の右に描きます。<br>寸法線は「追加距離」の列があるときだけ出ます（隣の点との間に1本ずつ。左右は点の並び順に対して）。</div>
   </div>
 </div>
 
@@ -182,10 +184,10 @@ function settings(){
   return{
     k:parseFloat($('unit').value),swap:$('swap').checked,
     scale:parseFloat(sel.value),rad:parseFloat(hankaku($('rad').value))||0,th:parseFloat(hankaku($('th').value))||0,
-    dCircle:$('dCircle').checked,dName:$('dName').checked,dCoord:$('dCoord').checked,
+    dPoint:$('dPoint').checked,dCircle:$('dCircle').checked,dName:$('dName').checked,dCoord:$('dCoord').checked,
     link:$('link').value,cfmt:$('cfmt').value,cpos:$('cpos').value,
     dDim:$('dDim').checked,dimTx:$('dimTx').value,dimOff:parseFloat(hankaku($('dimOff').value))||0,
-    lyPt:$('lyPt').value.trim()||'0',lyTx:$('lyTx').value.trim()||'0',lyLn:$('lyLn').value.trim()||'0',lyDm:$('lyDm').value.trim()||'0',lyTb:$('lyTb').value.trim()||'0'
+    lyPo:$('lyPo').value.trim()||'0',lyPt:$('lyPt').value.trim()||'0',lyTx:$('lyTx').value.trim()||'0',lyLn:$('lyLn').value.trim()||'0',lyDm:$('lyDm').value.trim()||'0',lyTb:$('lyTb').value.trim()||'0'
   };
 }
 
@@ -222,6 +224,7 @@ function build(pts,s){
   });
   pts.forEach((p,i)=>{
     const [x,y0]=P[i],y=ty[i];
+    if(s.dPoint)ents.push({t:'P',x,y:y0,ly:s.lyPo});
     if(s.dCircle&&R>0)ents.push({t:'C',x,y:y0,r:R,ly:s.lyPt});
     const tx=x+Math.max(R,H*0.3)+H*0.4;
     if(H>0&&y!==y0)ents.push({t:'PL',pts:[[x+R*Math.SQRT1_2,y0-R*Math.SQRT1_2],[tx-H*0.2,y+(s.dName?H*0.8:-H*0.7)]],closed:false,ly:s.lyTx});
@@ -302,7 +305,8 @@ function toDxf(ents){
   const ge=w(es),gr=w(brs),gb=w(blks),M=DXF2018.msp;
   let dn=0;
   ents.forEach(e=>{
-    if(e.t==='C'){head(ge,'CIRCLE',M,e.ly);ge(100,'AcDbCircle');ge(10,fx(e.x));ge(20,fx(e.y));ge(30,0);ge(40,fx(e.r))}
+    if(e.t==='P'){head(ge,'POINT',M,e.ly);ge(100,'AcDbPoint');ge(10,fx(e.x));ge(20,fx(e.y));ge(30,0)}
+    else if(e.t==='C'){head(ge,'CIRCLE',M,e.ly);ge(100,'AcDbCircle');ge(10,fx(e.x));ge(20,fx(e.y));ge(30,0);ge(40,fx(e.r))}
     else if(e.t==='T')text(ge,M,e.ly,e.x,e.y,e.h,e.s,0,e.al);
     else if(e.t==='PL'){head(ge,'LWPOLYLINE',M,e.ly);ge(100,'AcDbPolyline');ge(90,e.pts.length);ge(70,e.closed?1:0);
       e.pts.forEach(p=>{ge(10,fx(p[0]));ge(20,fx(p[1]))})}
@@ -345,6 +349,7 @@ function draw(build,pts){
   build.ents.forEach(e=>{
     if(e.t==='PL')add(e.closed?'polygon':'polyline',{...st,points:e.pts.map(p=>X(p[0])+','+Y(p[1])).join(' '),stroke:'#1d6fd1'});
     else if(e.t==='C')add('circle',{...st,cx:X(e.x),cy:Y(e.y),r:e.r,stroke:'#c62828'});
+    else if(e.t==='P')add('circle',{cx:X(e.x),cy:Y(e.y),r:(build.H||1)*0.12,fill:'#111'});
     else if(e.t==='D'){const d=dimParts(e),t=d.text;
       d.lines.forEach(([p,r])=>add('line',{...st,x1:X(p[0]),y1:Y(p[1]),x2:X(r[0]),y2:Y(r[1]),stroke:'#2e7d32','stroke-width':0.8}));
       add('text',{x:X(t.x),y:Y(t.y),'font-size':t.h,fill:'#2e7d32','text-anchor':'middle','dominant-baseline':'central',
@@ -389,7 +394,7 @@ function refresh(){
     $('sizeMsg').textContent=`範囲 東西 ${w.toFixed(1)}m × 南北 ${h.toFixed(1)}m → 1/${s.scale} で紙の上 ${(w*1000/s.scale).toFixed(0)}×${(h*1000/s.scale).toFixed(0)}mm／図面上の円半径 ${fx(b.R)}・文字高 ${fx(b.H)}`;
   }else $('sizeMsg').textContent='';
 }
-['src','unit','swap','scale','autoScale','rad','th','dCircle','dName','dCoord','cpos','link','cfmt','dDim','dimTx','dimOff','lyPt','lyTx','lyLn','lyDm','lyTb'].forEach(id=>{$(id).addEventListener('input',refresh);$(id).addEventListener('change',refresh)});
+['src','unit','swap','scale','autoScale','rad','th','dPoint','dCircle','dName','dCoord','cpos','link','cfmt','dDim','dimTx','dimOff','lyPo','lyPt','lyTx','lyLn','lyDm','lyTb'].forEach(id=>{$(id).addEventListener('input',refresh);$(id).addEventListener('change',refresh)});
 
 function out(msg,ok){const m=$('outMsg');m.textContent=msg;m.className='msg '+(ok?'ok':'ng')}
 // OneDrive・SharePoint の Web 画面などの枠の中ではダウンロードが止められるので、先に知らせる
