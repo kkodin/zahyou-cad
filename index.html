@@ -102,7 +102,7 @@ table.list td:nth-child(2){text-align:left}
 <div>
   <div class="card">
     <h2>① Excelから貼り付け</h2>
-    <textarea id="src" placeholder="Excel で「点名・X・Y」の列を選んでコピーし、ここに貼り付け&#10;（見出し行があっても可。列の並びは見出しで自動判定）&#10;&#10;例）&#10;点名	X（m）	Y（m）&#10;Ⅱ398-12	-61786.610	-29720.777"></textarea>
+    <textarea id="src" placeholder="Excel で「点名・X・Y」（標高があれば標高も）の列を選んでコピーし、ここに貼り付け&#10;（見出し行があっても可。列の並びは見出しで自動判定）&#10;&#10;例）&#10;点名	X（m）	Y（m）&#10;Ⅱ398-12	-61786.610	-29720.777"></textarea>
     <div class="msg" id="parseMsg"></div>
   </div>
 
@@ -150,7 +150,7 @@ table.list td:nth-child(2){text-align:left}
         <input type="text" id="lyTb" value="座標_表" title="座標表の画層">
       </td></tr>
     </table>
-    <div class="note">画層は左から 点／円／文字／線／寸法／表。点は座標の位置にそのまま置く CAD の「点」です。無ければ自動で作られます。<br>「表にまとめる」では、点名・X・Y・点間距離（1つ前の点から）の表を図の右に描きます。<br>寸法線は「追加距離」の列があるときだけ出ます（隣の点との間に1本ずつ。左右は点の並び順に対して）。</div>
+    <div class="note">画層は左から 点／円／文字／線／寸法／表。点は座標の位置にそのまま置く CAD の「点」です。無ければ自動で作られます。<br>「表にまとめる」では、点名・X・Y・標高（取り込んだときだけ）・点間距離（1つ前の点から）の表を図の右に描きます。<br>寸法線は「追加距離」の列があるときだけ出ます（隣の点との間に1本ずつ。左右は点の並び順に対して）。</div>
   </div>
 </div>
 
@@ -217,11 +217,11 @@ sel.value=500;
 function hankaku(s){return s.replace(/[０-９．－＋，]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[−ー―‐]/g,'-')}
 function num(s){s=hankaku(String(s).trim()).replace(/,/g,'');if(!/^[-+]?\d+(\.\d+)?$/.test(s))return NaN;return parseFloat(s)}
 
-// 貼り付けを読む：見出しがあれば見出しで、無ければ「最初の文字列列＝点名、数値列の1つ目＝X、2つ目＝Y」
+// 貼り付けを読む：見出しがあれば見出しで、無ければ「最初の文字列列＝点名、数値列の1つ目＝X、2つ目＝Y、3つ目＝標高」
 function parse(text){
   const rows=text.replace(/\r/g,'').split('\n').filter(l=>l.trim()!=='').map(l=>l.split(/\t|,(?=\s*[-+\d])/));
   if(!rows.length)return{pts:[],msg:''};
-  let iN=-1,iX=-1,iY=-1,iD=-1,start=0;
+  let iN=-1,iX=-1,iY=-1,iD=-1,iZ=-1,start=0;
   const h=rows[0].map(c=>c.trim());
   const isHead=h.some(c=>c!==''&&isNaN(num(c)))&&h.filter(c=>!isNaN(num(c))).length<2;
   if(isHead){
@@ -229,6 +229,7 @@ function parse(text){
       // 全角英字・＃も半角に。「器械点 X」「X座標」のように X・Y が途中にあっても拾う
       const u=hankaku(c).replace(/[Ａ-Ｚａ-ｚ＃]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0)).toUpperCase();
       if(iD<0&&/追加距離|追距|累加距離/.test(u))iD=i;
+      else if(iZ<0&&/標高|高さ|地盤高|計画高|(^|[^A-Z])(Z|H|EL|GH|FH)([^A-Z]|$)/.test(u))iZ=i;
       else if(iX<0&&/(^|[^A-Z])X([^A-Z]|$)|緯距/.test(u))iX=i;
       else if(iY<0&&/(^|[^A-Z])Y([^A-Z]|$)|経距/.test(u))iY=i;
       else if(iN<0&&/点名|点番|名称|NAME|測点|点$|^#$|^NO\.?$|番号/.test(u))iN=i;
@@ -238,7 +239,7 @@ function parse(text){
   const body=rows.slice(start);
   if(iX<0||iY<0){ // 数値列から推定
     const r=body[0]||[];let numCols=[];
-    r.forEach((c,i)=>{if(!isNaN(num(c))&&i!==iD)numCols.push(i)});
+    r.forEach((c,i)=>{if(!isNaN(num(c))&&i!==iD&&i!==iZ)numCols.push(i)});
     // 見出しが無く数値が3列以上で、1列目が 0 から増えていくなら追加距離とみなす
     if(!isHead&&iD<0&&numCols.length>=3){
       const v=body.map(row=>num(row[numCols[0]]??''));
@@ -246,17 +247,19 @@ function parse(text){
     }
     if(iX<0)iX=numCols.find(i=>i!==iY);
     if(iY<0)iY=numCols.find(i=>i!==iX&&i>iX);
+    // 見出しが無いときは Y の次の数値列を標高とみなす
+    if(!isHead&&iZ<0)iZ=numCols.find(i=>i>iY)??-1;
   }
-  if(iN<0){const r=body[0]||[];iN=r.findIndex((c,i)=>i!==iX&&i!==iY&&i!==iD&&c.trim()!==''&&isNaN(num(c)))}
+  if(iN<0){const r=body[0]||[];iN=r.findIndex((c,i)=>i!==iX&&i!==iY&&i!==iD&&i!==iZ&&c.trim()!==''&&isNaN(num(c)))}
   const pts=[],bad=[];
   body.forEach((r,k)=>{
     const x=num(r[iX]??''),y=num(r[iY]??'');
     if(isNaN(x)||isNaN(y)){bad.push(k+start+1);return}
     const name=iN>=0?(r[iN]||'').trim():'';
-    const d=iD>=0?num(r[iD]??''):NaN;
-    pts.push({name:name||String(pts.length+1),X:x,Y:y,d:isNaN(d)?null:d});
+    const d=iD>=0?num(r[iD]??''):NaN,z=iZ>=0?num(r[iZ]??''):NaN;
+    pts.push({name:name||String(pts.length+1),X:x,Y:y,d:isNaN(d)?null:d,z:isNaN(z)?null:z});
   });
-  let msg=`${pts.length}点 読み込み（点名＝${iN>=0?(iN+1)+'列目':'なし→連番'}${iD>=0?'、追加距離＝'+(iD+1)+'列目':''}、X＝${iX+1}列目、Y＝${iY+1}列目）`;
+  let msg=`${pts.length}点 読み込み（点名＝${iN>=0?(iN+1)+'列目':'なし→連番'}${iD>=0?'、追加距離＝'+(iD+1)+'列目':''}、X＝${iX+1}列目、Y＝${iY+1}列目${iZ>=0?'、標高＝'+(iZ+1)+'列目':''}）`;
   if(bad.length)msg+=`\n数値でない行を飛ばしました：${bad.slice(0,10).join(',')}行目${bad.length>10?' ほか':''}`;
   return{pts,msg,bad:bad.length};
 }
@@ -316,11 +319,11 @@ function build(pts,s){
       else{ents.push({t:'T',x:tx,y:y-H*0.3-ch,h:ch,s:X,ly:s.lyTx});ents.push({t:'T',x:tx,y:y-H*0.3-ch*2.5,h:ch,s:Y,ly:s.lyTx})}
     }
   });
-  // 座標表：点名・(追加距離)・X・Y・点間距離（1つ前の点から）。図の右上に罫線つきで描く
+  // 座標表：点名・(追加距離)・X・Y・(標高)・点間距離（1つ前の点から）。図の右上に罫線つきで描く
   if(s.dCoord&&!side&&pts.length&&H>0){
-    const hasD=pts.some(p=>p.d!=null);
-    const T=[['点名',...(hasD?['追加距離']:[]),'X','Y','点間距離']];
-    pts.forEach((p,i)=>T.push([p.name,...(hasD?[p.d!=null?p.d.toFixed(3):'']:[]),p.X.toFixed(3),p.Y.toFixed(3),
+    const hasD=pts.some(p=>p.d!=null),hasZ=pts.some(p=>p.z!=null);
+    const T=[['点名',...(hasD?['追加距離']:[]),'X','Y',...(hasZ?['標高']:[]),'点間距離']];
+    pts.forEach((p,i)=>T.push([p.name,...(hasD?[p.d!=null?p.d.toFixed(3):'']:[]),p.X.toFixed(3),p.Y.toFixed(3),...(hasZ?[p.z!=null?p.z.toFixed(3):'']:[]),
       i?Math.hypot(p.X-pts[i-1].X,p.Y-pts[i-1].Y).toFixed(3):'']));
     const tw=t=>[...t].reduce((a,c)=>a+(c.charCodeAt(0)>255?1:0.7),0)*ch; // 字の幅のめやす（全角1・半角0.7）
     const ws=T[0].map((_,j)=>Math.max(...T.map(r=>tw(r[j])))+ch*1.6),rh=ch*2;
@@ -956,10 +959,10 @@ function refresh(force){
   if(!edited){setDoc(b,s);if(!force)undoS.length=0;redoS.length=0;if(key!==srcKey)needFit=true;srcKey=key;updLayers();updProps();render()}
   // 一覧
   const t=$('list');
-  const hasD=r.pts.some(p=>p.d!=null);
-  t.innerHTML='<tr><th>No</th><th>点名</th>'+(hasD?'<th>追加距離</th>':'')+'<th>測量 X</th><th>測量 Y</th><th>点間距離</th><th>CAD x</th><th>CAD y</th></tr>'+
+  const hasD=r.pts.some(p=>p.d!=null),hasZ=r.pts.some(p=>p.z!=null);
+  t.innerHTML='<tr><th>No</th><th>点名</th>'+(hasD?'<th>追加距離</th>':'')+'<th>測量 X</th><th>測量 Y</th>'+(hasZ?'<th>標高</th>':'')+'<th>点間距離</th><th>CAD x</th><th>CAD y</th></tr>'+
     r.pts.map((p,i)=>{const c=s.swap?[p.Y*s.k,p.X*s.k]:[p.X*s.k,p.Y*s.k],q=r.pts[i-1];
-      return `<tr><td>${i+1}</td><td>${p.name.replace(/</g,'&lt;')}</td>${hasD?`<td>${p.d!=null?p.d.toFixed(3):''}</td>`:''}<td>${p.X.toFixed(3)}</td><td>${p.Y.toFixed(3)}</td><td>${q?Math.hypot(p.X-q.X,p.Y-q.Y).toFixed(3):''}</td><td>${fx(c[0])}</td><td>${fx(c[1])}</td></tr>`}).join('');
+      return `<tr><td>${i+1}</td><td>${p.name.replace(/</g,'&lt;')}</td>${hasD?`<td>${p.d!=null?p.d.toFixed(3):''}</td>`:''}<td>${p.X.toFixed(3)}</td><td>${p.Y.toFixed(3)}</td>${hasZ?`<td>${p.z!=null?p.z.toFixed(3):''}</td>`:''}<td>${q?Math.hypot(p.X-q.X,p.Y-q.Y).toFixed(3):''}</td><td>${fx(c[0])}</td><td>${fx(c[1])}</td></tr>`}).join('');
   if(r.pts.length){
     const xs=r.pts.map(p=>p.Y),ys=r.pts.map(p=>p.X);
     const w=Math.max(...xs)-Math.min(...xs),h=Math.max(...ys)-Math.min(...ys);
